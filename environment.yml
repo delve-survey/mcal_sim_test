@@ -1,0 +1,15 @@
+name: shear
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+dependencies:
+  - galsim
+  - ngmix=2
+  - joblib
+  - pyyaml
+  - click
+  - esutil
+  - meds
+  - fitsio
+  - pytest
