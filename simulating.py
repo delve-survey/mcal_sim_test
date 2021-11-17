@@ -24,6 +24,9 @@ from .psf_wrapper import PSFWrapper
 logger = logging.getLogger(__name__)
 
 
+#reminder for Lucas, Dhayaa and Chihway: lines commented with "CONFIG_change" have hardcoded things that we might want to actually have in a CONFIG file
+
+
 class End2EndSimulation(object):
     """An end-to-end DES Y3 simulation.
     Parameters
@@ -82,7 +85,7 @@ class End2EndSimulation(object):
         # load the image info for each band
         self.info = {}
         for band in bands:
-            fname = get_band_info_file(
+            fname = get_band_info_file( #this function is picking out the filename
                 meds_dir=self.output_meds_dir,
                 medsconf=MEDSCONF,
                 tilename=self.tilename,
@@ -96,7 +99,7 @@ class End2EndSimulation(object):
         logger.info(' simulating coadd tile %s', self.tilename)
 
         # step 1 - make the truth catalog
-        truth_cat = self._make_truth_catalog()
+        truth_cat = self._make_truth_catalog() #"TRUTH" because it contains the input positions of future simulated galaxies - as opposed to sextracting galaxies
 
         # step 2 - per band, write the images to a tile
         for band in self.bands:
@@ -119,7 +122,7 @@ class End2EndSimulation(object):
                 wcs=get_galsim_wcs(
                     image_path=se_info['image_path'],
                     image_ext=se_info['image_ext']),
-                psf=self._make_psf_wrapper(se_info=se_info),
+                psf=self._make_psf_wrapper(se_info=se_info), #STOPPED HERE, so continue from _make_PSF_wrapper
                 g1=self.gal_kws['g1'],
                 g2=self.gal_kws['g2'])
 
@@ -164,11 +167,11 @@ class End2EndSimulation(object):
         """Make the truth catalog."""
         # always done with first band
         band = self.bands[0]
-        coadd_wcs = get_esutil_wcs(
+        coadd_wcs = get_esutil_wcs( #gets WCS and seems to cache it into memory
             image_path=self.info[band]['image_path'],
             image_ext=self.info[band]['image_ext'])
 
-        ra, dec, x, y = make_coadd_grid_radec(
+        ra, dec, x, y = make_coadd_grid_radec( #gets source positions on a grid, presumably over a sky footprint and dithers them, for eg. simulations without blending
             rng=self.gal_rng, coadd_wcs=coadd_wcs,
             return_xy=True, n_grid=self.gal_kws['n_grid'])
 
@@ -185,7 +188,7 @@ class End2EndSimulation(object):
         truth_cat['x'] = x
         truth_cat['y'] = y
 
-        truth_cat_path = get_truth_catalog_path(
+        truth_cat_path = get_truth_catalog_path( #literally just joins strings
             meds_dir=self.output_meds_dir,
             medsconf=MEDSCONF,
             tilename=self.tilename)
@@ -194,3 +197,192 @@ class End2EndSimulation(object):
         fitsio.write(truth_cat_path, truth_cat, clobber=True)
 
         return truth_cat
+
+##############################
+# from https://github.com/beckermr/misc/blob/main/matts_misc/simple_des_y3_sims/files.py
+
+def get_band_info_file(*, meds_dir, medsconf, tilename, band):
+    """Get the path of the YAML file holding the info dict for the
+    `tilename` and `band`.
+    Parameters
+    ----------
+    meds_dir : str
+        The DESDATA/MEDS_DIR path where the info file is located.
+    medsconf : str
+        The MEDS file version (e.g., 'y3v02').
+    tilename : str
+        The DES coadd tilename (e.g., 'DES2122+0001').
+    bands : str
+        A bands (e.g., 'r').
+    Returns
+    -------
+    info_file : str
+        The YAML file with the coadd + SE information.
+    """
+    return os.path.join(
+        meds_dir,
+        'simple_des_y3_sims',
+        medsconf,
+        'band_info_files',
+        '%s_%s_info.yaml' % (tilename, band))
+
+
+@lru_cache(maxsize=256)
+def get_esutil_wcs(*, image_path, image_ext):
+    """Read the WCS solution of an image into an esutil.wcsutil.WCS object.
+    Parameters
+    ----------
+    image_path : str
+        The path to the image.
+    image_ext : int or str
+        The extension with the WCS information.
+    Returns
+    -------
+    wcs : esutil.wcsutil.WCS
+        The WCS object.
+    """
+    hd = fitsio.read_header(
+        image_path, ext=image_ext)
+    hd = {k.lower(): hd[k] for k in hd if k is not None}
+    return esutil.wcsutil.WCS(hd)
+
+def make_coadd_grid_radec(*, n_grid, coadd_wcs, rng, return_xy=False): #creates a grid of simulations, positions in the grid are dithered here
+    """Make a grid of points in the coadd image coordinate system and
+    return their locations in ra-dec.
+    Parameters
+    ----------
+    n_grid : int
+        The number of objects across the grid in each direction. The total
+        number of objects will be `n_grid**2`.
+    coadd_wcs : esutil.wcsutil.WCS
+        The coadd WCS solution.
+    rng : np.random.RandomState
+        An RNG to use. This RNg is used to dither the locations on the coadd
+        grid within a pixel.
+    return_xy : bool, optional
+        If True, also return the x and y positions. Default is False
+    Returns
+    -------
+    ra : np.ndarray
+        The array of ra positions of the sources.
+    dec : np.ndarray
+        The array of dec positions of the sources.
+    x : np.ndarray
+        The array of column positions. Only returned if `return_xy=True`.
+    y : np.ndarray
+        The array of row positions. Only returned if `return_xy=True`.
+    """
+    L = 10000  # hard code this since it will not change
+    dL = L / n_grid
+    dL_2 = dL / 2
+
+    x = []
+    y = []
+    for row_ind in range(n_grid):
+        for col_ind in range(n_grid):
+            _x = col_ind * dL + dL_2 + 1
+            _y = row_ind * dL + dL_2 + 1
+
+            # dither
+            _x += rng.uniform(low=-0.5, high=0.5)
+            _y += rng.uniform(low=-0.5, high=0.5)
+
+            x.append(_x)
+            y.append(_y)
+
+    x = np.array(x)
+    y = np.array(y)
+    ra, dec = coadd_wcs.image2sky(x, y)
+
+    if return_xy:
+        return ra, dec, x, y
+    else:
+        return ra, dec
+
+
+def get_truth_catalog_path(*, meds_dir, medsconf, tilename):
+    """Get the truth catalog path.
+    Parameters
+    ----------
+    meds_dir : str
+        The DESDATA/MEDS_DIR path where the info file is located.
+    medsconf : str
+        The MEDS file version (e.g., 'y3v02').
+    tilename : str
+        The DES coadd tilename (e.g., 'DES2122+0001').
+    Returns
+    -------
+    truth_file_path : str
+        The path to the truth file.
+    """
+    return os.path.join(
+        meds_dir,
+        'simple_des_y3_sims',
+        medsconf,
+        'truthcats',
+        '%s_truthcat.fits' % tilename
+    )
+
+def make_dirs_for_file(filename):
+    """Make all of the parent directories for a file at `filename`."""
+    dirname = os.path.dirname(filename)
+    if len(dirname) > 0:
+        os.makedirs(dirname, exist_ok=True)
+
+class LazySourceCat(object):
+    """A lazy source catalog that only builds objects to be rendered as they
+    are needed.
+    Parameters
+    ----------
+    truth_cat : structured np.array
+        The truth catalog as a structured numpy array.
+    wcs : galsim.GSFitsWCS
+        A galsim WCS instance for the image to be rendered.
+    psf : PSFWrapper
+        A PSF wrapper object to use for the PSF.
+    g1 : float
+        The shear to apply on the 1-axis.
+    g2 : float
+        The shear to apply on the 2-axis.
+    Methods
+    -------
+    __call__(ind)
+        Returns the object to be rendered from the truth catalog at
+        index `ind`.
+    """
+    def __init__(self, *, truth_cat, wcs, psf, g1, g2):
+        self.truth_cat = truth_cat
+        self.wcs = wcs
+        self.psf = psf
+        self.g1 = g1
+        self.g2 = g2
+
+    def __call__(self, ind):
+        pos = self.wcs.toImage(galsim.CelestialCoord(
+            ra=self.truth_cat['ra'][ind] * galsim.degrees,
+            dec=self.truth_cat['dec'][ind] * galsim.degrees))
+        obj = galsim.Exponential(half_light_radius=0.5).withFlux(64000) #might replace these hardcoded numbers by some CONFIG_change file input 
+        obj = obj.shear(g1=self.g1, g2=self.g2)
+        psf = self.psf.getPSF(image_pos=pos)
+        return galsim.Convolve([obj, psf]), pos
+
+@lru_cache(maxsize=256)
+def get_galsim_wcs(*, image_path, image_ext):
+    """Read the WCS solution of an image into a galsim WCS object.
+    Parameters
+    ----------
+    image_path : str
+        The path to the image.
+    image_ext : int or str
+        The extension with the WCS information.
+    Returns
+    -------
+    wcs : galsim WCS
+        The WCS object.
+    """
+    hd = fitsio.read_header(
+        image_path, ext=image_ext)
+    hd = {k.upper(): hd[k] for k in hd if k is not None}
+    wcs = galsim.FitsWCS(header=hd)
+    assert not isinstance(wcs, galsim.PixelScale)  # this has been a problem
+    return wcs
