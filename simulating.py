@@ -122,7 +122,7 @@ class End2EndSimulation(object):
                 wcs=get_galsim_wcs(
                     image_path=se_info['image_path'],
                     image_ext=se_info['image_ext']),
-                psf=self._make_psf_wrapper(se_info=se_info), #STOPPED HERE, so continue from _make_PSF_wrapper
+                psf=self._make_psf_wrapper(se_info=se_info), 
                 g1=self.gal_kws['g1'],
                 g2=self.gal_kws['g2'])
 
@@ -142,7 +142,7 @@ class End2EndSimulation(object):
 
     def _make_psf_wrapper(self, *, se_info):
         if self.psf_kws['type'] == 'gauss':
-            psf_model = galsim.Gaussian(fwhm=0.9)
+            psf_model = galsim.Gaussian(fwhm=0.9) #CONFIG_change for fwhm
         elif self.psf_kws['type'] == 'piff':
             from ..des_piff import DES_Piff
             psf_model = DES_Piff(expand_path(se_info['piff_path']))
@@ -386,3 +386,326 @@ def get_galsim_wcs(*, image_path, image_ext):
     wcs = galsim.FitsWCS(header=hd)
     assert not isinstance(wcs, galsim.PixelScale)  # this has been a problem
     return wcs
+
+def _render_se_image(
+        *, se_info, band, truth_cat, bounds_buffer_uv,
+        draw_method, noise_seed, output_meds_dir, src_func):
+    """Render an SE image.
+    This function renders a full image and writes it to disk.
+    Parameters
+    ----------
+    se_info : dict
+        The entry from the `src_info` list for the coadd tile.
+    band : str
+        The band as a string.
+    truth_cat : np.ndarray
+        A structured array with the truth catalog. Must at least have the
+        columns 'ra' and 'dec' in degrees.
+    bounds_buffer_uv : float
+        The buffer in arcseconds for finding sources in the image. Any source
+        whose center lies outside of this buffer area around the CCD will not
+        be rendered for that CCD.
+    draw_method : str
+        The method used to draw the image. See the docs of `GSObject.drawImage`
+        for details and options. Usually 'auto' is correct unless using a
+        PSF with the pixel in which case 'no_pixel' is the right choice.
+    noise_seed : int
+        The RNG seed to use to generate the noise field for the image.
+    output_meds_dir : str
+        The output DEADATA/MEDS_DIR for the simulation data products.
+    src_func : callable
+        A function with signature `src_func(src_ind)` that
+        returns the galsim object to be rendered and image position
+        for a given index of the truth catalog.
+    """
+
+    # step 1 - get the set of good objects for the CCD
+    msk_inds = _cut_tuth_cat_to_se_image(
+        truth_cat=truth_cat,
+        se_info=se_info,
+        bounds_buffer_uv=bounds_buffer_uv)
+
+    # step 2 - render the objects
+    im = _render_all_objects(
+        msk_inds=msk_inds,
+        truth_cat=truth_cat,
+        se_info=se_info,
+        band=band,
+        src_func=src_func,
+        draw_method=draw_method)
+
+    # step 3 - add bkg and noise
+    # also removes the zero point
+    im, wgt, bkg = _add_noise_and_background( #STOPPED here
+        image=im,
+        se_info=se_info, #FIGURE OUT where this is coming from 
+        noise_seed=noise_seed)
+
+    # step 4 - write to disk
+    _write_se_img_wgt_bkg(
+        image=im,
+        weight=wgt,
+        background=bkg,
+        se_info=se_info,
+        output_meds_dir=output_meds_dir)
+
+
+def _cut_tuth_cat_to_se_image(*, truth_cat, se_info, bounds_buffer_uv):
+    """get the inds of the objects to render from the truth catalog"""
+    wcs = get_esutil_wcs(
+        image_path=se_info['image_path'],
+        image_ext=se_info['image_ext'])
+    sky_bnds, ra_ccd, dec_ccd = get_rough_sky_bounds(
+        im_shape=se_info['image_shape'],
+        wcs=wcs,
+        position_offset=se_info['position_offset'],
+        bounds_buffer_uv=bounds_buffer_uv,
+        n_grid=4)
+    u, v = radec_to_uv(truth_cat['ra'], truth_cat['dec'], ra_ccd, dec_ccd)
+    sim_msk = sky_bnds.contains_points(u, v)
+    msk_inds, = np.where(sim_msk)
+    return msk_inds
+
+
+def _render_all_objects(
+        *, msk_inds, truth_cat, se_info, band, src_func, draw_method):
+    gs_wcs = get_galsim_wcs(
+        image_path=se_info['image_path'],
+        image_ext=se_info['image_ext'])
+
+    im = render_sources_for_image(
+        image_shape=se_info['image_shape'],
+        wcs=gs_wcs,
+        draw_method=draw_method,
+        src_inds=msk_inds,
+        src_func=src_func,
+        n_jobs=1)
+
+    return im.array
+
+
+def _add_noise_and_background(*, image, se_info, noise_seed):
+    """add noise and background to an image, remove the zero point"""
+
+    noise_rng = np.random.RandomState(seed=noise_seed) 
+
+    # first back to ADU units
+    image /= se_info['scale'] #this might be using an artificial setup for sextractor
+
+    # add the background
+    bkg = fitsio.read(se_info['bkg_path'], ext=se_info['bkg_ext'])
+    image += bkg
+
+    # now add noise
+    wgt = fitsio.read(se_info['weight_path'], ext=se_info['weight_ext'])
+    bmask = fitsio.read(se_info['bmask_path'], ext=se_info['bmask_ext'])
+    img_std = 1.0 / np.sqrt(np.median(wgt[bmask == 0]))
+    image += (noise_rng.normal(size=image.shape) * img_std)
+    wgt[:, :] = 1.0 / img_std**2
+
+    return image, wgt, bkg
+
+
+def _write_se_img_wgt_bkg(
+        *, image, weight, background, se_info, output_meds_dir):
+    # these should be the same
+    assert se_info['image_path'] == se_info['weight_path'], se_info
+    assert se_info['image_path'] == se_info['bmask_path'], se_info
+
+    # and not this
+    assert se_info['image_path'] != se_info['bkg_path']
+
+    # get the final image file path and write
+    image_file = se_info['image_path'].replace(
+        '$MEDS_DIR', output_meds_dir)
+    make_dirs_for_file(image_file)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with StagedOutFile(image_file, tmpdir=tmpdir) as sf:
+            # copy to the place we stage from
+            shutil.copy(expand_path(se_info['image_path']), sf.path)
+
+            # open in read-write mode and replace the data
+            with fitsio.FITS(sf.path, mode='rw') as fits:
+                fits[se_info['image_ext']].write(image)
+                fits[se_info['weight_ext']].write(weight)
+                fits[se_info['bmask_ext']].write(
+                    np.zeros_like(image, dtype=np.int16))
+
+    # get the background file path and write
+    bkg_file = se_info['bkg_path'].replace(
+        '$MEDS_DIR', output_meds_dir)
+    make_dirs_for_file(bkg_file)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with StagedOutFile(bkg_file, tmpdir=tmpdir) as sf:
+            # copy to the place we stage from
+            shutil.copy(expand_path(se_info['bkg_path']), sf.path)
+
+            # open in read-write mode and replace the data
+            with fitsio.FITS(sf.path, mode='rw') as fits:
+                fits[se_info['bkg_ext']].write(background)
+
+def get_rough_sky_bounds(
+        *, im_shape, wcs, position_offset, bounds_buffer_uv, n_grid,
+        celestial=True):
+    """Get the rough boundry of a CCD on the sky for detecting if an object
+    is on the CCD.
+    Algorithm due to M. Jarvis w/ some changes from M. R. Becker.
+    Parameters
+    ----------
+    im_shape : two-tuple of ints
+        The shape of the image.
+    wcs : `esutil.wcsutil.WCS` or `AffineWCS` object
+        The wcs object that defines the transformation from pixels to the sky.
+    position_offset : int
+        The offset from zero-indexed pixels needed to use the WCS. For one-
+        indexed pixels, pass 1.
+    bounds_buffer_uv : float
+        The buffer in arcseconds for the chip boundaries in (u, v) coordinates.
+        A typical value is 16 arcseconds.
+    n_grid : int
+        Number of grid points to use in the small direction to construct
+        the bounding box. A typical value is 4.
+    celestial : bool, optional
+        If True, interpret the WCS as a celestial WCS. Otherwise, treat it
+        as an affine transformation. Default is True.
+    Returns
+    -------
+    sky_bnds : `meds.bounds.Bounds`
+        The bounding box in a spherical coordinate system centered on the CCD.
+    ra_ccd : float
+        The CCD center ra.
+    dec_ccd : float
+        The CCD center dec.
+    Examples
+    --------
+    >>> sky_bnds, ra_ccd, dec_ccd = get_rough_sky_bounds(
+    >>>     im_shape=(4096, 2048),
+    >>>     wcs=wcs, position_offset=1, bounds_buffer_uv=16, n_grid=4)
+    >>> # ra, dec are points to test
+    >>> u, v = radec_to_uv(ra, dec, ra_ccd, dec_ccd)
+    >>> in_sky_bnds = sky_bnds.contains_points(u, v)  # returs a bool mask
+    >>> q = np.where(in_sky_bnds)
+    """
+    nrow, ncol = im_shape
+
+    # set n_grid so that pixels are square-ish
+    if ncol < nrow:
+        n_grid_col = n_grid
+        n_grid_row = np.ceil(float(nrow)/float(ncol))
+    else:
+        n_grid_row = n_grid
+        n_grid_col = np.ceil(float(ncol)/float(nrow))
+
+    # construct a grid
+    # this is zero-indexed
+    rows = np.arange(n_grid_row+1)*(nrow-1.0)/n_grid_row
+    cols = np.arange(n_grid_col+1)*(ncol-1.0)/n_grid_col
+    # we could save some time by just doing the outside but shrug
+    rows, cols = np.meshgrid(rows, cols)
+    rows = rows.ravel()
+    cols = cols.ravel()
+
+    # get ra, dec
+    ra, dec = wcs.image2sky(
+        x=cols + position_offset,
+        y=rows + position_offset)
+
+    # get ccd center
+    # these are zero-indexed
+    row_ccd = (nrow - 1)/2
+    col_ccd = (ncol - 1)/2
+    ra_ccd, dec_ccd = wcs.image2sky(
+        x=col_ccd + position_offset,
+        y=row_ccd + position_offset)
+
+    if celestial:
+        # get u,v - ccd is at 0,0 by def
+        u, v = radec_to_uv(ra, dec, ra_ccd, dec_ccd)
+
+        # build bounds with buffer and cos(dec) factors
+        vrad = np.deg2rad(v / 3600.0)  # arcsec to degrees
+        ufac = np.cos(vrad).min()
+
+        ubuff = bounds_buffer_uv / ufac
+        vbuff = bounds_buffer_uv
+    else:
+        u = ra - ra_ccd
+        v = dec - dec_ccd
+        ubuff = bounds_buffer_uv
+        vbuff = bounds_buffer_uv
+
+    sky_bnds = Bounds(u.min() - ubuff,
+                      u.max() + ubuff,
+                      v.min() - vbuff,
+                      v.max() + vbuff)
+
+    return sky_bnds, ra_ccd, dec_ccd
+
+def _render_list(inds, wcs, draw_method, image_shape, src_func):
+    im = galsim.ImageD(nrow=image_shape[0], ncol=image_shape[1])
+    for ind in inds:
+        # draw
+        src, pos = src_func(ind)
+        stamp = render_source_in_image(
+            source=src,
+            local_wcs=wcs.local(image_pos=pos),
+            image_pos=pos,
+            draw_method=draw_method)
+
+        # intersect and add to total image
+        overlap = stamp.bounds & im.bounds
+        if overlap.area() > 0:
+            im[overlap] += stamp[overlap]
+
+    return im
+
+def render_source_in_image(*, source, image_pos, local_wcs, draw_method):
+    """Render a source in a stamp in a larger image.
+    Parameters
+    ----------
+    source : galsim.GSObject
+        The source to render. It must have the `drawImage` method.
+    image_pos : galsim.PositionD
+        The center of the source in the image.
+    local_wcs : galsim.LocalWCS
+        A local WCS instance to use.
+    draw_method : str
+        The method used to draw the image. See the docs of `GSObject.drawImage`
+        for details and options. Usually 'auto' is correct unless using a
+        PSF with the pixel in which case 'no_pixel' is the right choice.
+    Returns
+    -------
+    stamp : galsim.ImageD
+        The rendered object in the stamp.
+    """
+    # pre-draw to get size
+    _im = source.drawImage(
+        wcs=local_wcs,
+        method=draw_method,
+        setup_only=True).array
+    assert _im.shape[0] == _im.shape[1]
+
+    # lower-left corner
+    # the extact math here doesn't matter so much
+    # the offset computation takes care of this relative to any x_ll, y_ll
+    # we only need to make sure the full object fits on the image
+    x_ll = int(image_pos.x - (_im.shape[1] - 1)/2)
+    y_ll = int(image_pos.y - (_im.shape[0] - 1)/2)
+
+    # get the offset of the center
+    # this is the offset of the image center from the object center
+    # galsim renders objects at the image center, so we have to add this
+    # offset when rendering
+    dx = image_pos.x - (x_ll + (_im.shape[1] - 1)/2)
+    dy = image_pos.y - (y_ll + (_im.shape[0] - 1)/2)
+
+    # draw for real
+    stamp = source.drawImage(
+        nx=_im.shape[1],
+        ny=_im.shape[0],
+        wcs=local_wcs,
+        method=draw_method,
+        offset=galsim.PositionD(x=dx, y=dy))
+    stamp.setOrigin(x_ll, y_ll)
+
+    return stamp
