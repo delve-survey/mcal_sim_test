@@ -1,0 +1,59 @@
+#!/bin/bash
+#!/bin/bash
+#SBATCH -J v000-{{ tilename }}
+#SBATCH -p bdw
+#SBATCH -N 1
+#SBATCH --ntasks-per-node=1
+#SBATCH -o results-{{ tilename }}.oe
+#SBATCH -t 24:00:00
+
+export MEDS_DIR=$DESDATA
+export TMPDIR=/scratch
+
+output="outputs-{{ tilename }}"
+bands="riz"
+tilename="{{ tilename }}"
+
+source activate lcrc
+
+run-simple-des-y3-sim \
+  prep \
+  --tilename="$tilename" \
+  --bands="$bands" \
+  --output-desdata="$output"
+
+run-simple-des-y3-sim \
+  galsim \
+  --tilename="$tilename" \
+  --bands="$bands" \
+  --output-desdata="$output" \
+  --config-file="config.yaml" \
+  --seed="{{ seed_galsim }}"
+
+run-simple-des-y3-sim \
+  true-detection \
+  --tilename="$tilename" \
+  --bands="$bands" \
+  --output-desdata="$output" \
+  --config-file="config.yaml"
+
+run-simple-des-y3-sim \
+  meds \
+  --tilename="$tilename" \
+  --bands="$bands" \
+  --output-desdata="$output" \
+  --config-file="config.yaml" \
+  --meds-config-file="../default_configs/meds.yaml"
+
+conda deactivate
+
+rm -rf $output/y3v02/*
+
+source activate des-y3
+
+run-simple-des-y3-sim-mcal \
+  --tilename="$tilename" \
+  --bands="$bands" \
+  --output-desdata="$output" \
+  --mcal-config-file="../default_configs/run-mcal-nouberseg.yaml" \
+  --seed="{{ seed_mcal }}"
