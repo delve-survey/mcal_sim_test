@@ -436,9 +436,9 @@ def _render_se_image(
 
     # step 3 - add bkg and noise
     # also removes the zero point
-    im, wgt, bkg = _add_noise_and_background( #STOPPED here
+    im, wgt, bkg = _add_noise_and_background( 
         image=im,
-        se_info=se_info, #FIGURE OUT where this is coming from 
+        se_info=se_info, #FIGURE OUT where this is coming from: the MEDS input (or the database, somewhere like that, an actual observation)
         noise_seed=noise_seed)
 
     # step 4 - write to disk
@@ -709,3 +709,42 @@ def render_source_in_image(*, source, image_pos, local_wcs, draw_method):
     stamp.setOrigin(x_ll, y_ll)
 
     return stamp
+
+def _write_se_img_wgt_bkg(
+        *, image, weight, background, se_info, output_meds_dir):
+    # these should be the same
+    assert se_info['image_path'] == se_info['weight_path'], se_info
+    assert se_info['image_path'] == se_info['bmask_path'], se_info
+
+    # and not this
+    assert se_info['image_path'] != se_info['bkg_path']
+
+    # get the final image file path and write
+    image_file = se_info['image_path'].replace(
+        '$MEDS_DIR', output_meds_dir)
+    make_dirs_for_file(image_file)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with StagedOutFile(image_file, tmpdir=tmpdir) as sf:
+            # copy to the place we stage from
+            shutil.copy(expand_path(se_info['image_path']), sf.path)
+
+            # open in read-write mode and replace the data
+            with fitsio.FITS(sf.path, mode='rw') as fits:
+                fits[se_info['image_ext']].write(image)
+                fits[se_info['weight_ext']].write(weight)
+                fits[se_info['bmask_ext']].write(
+                    np.zeros_like(image, dtype=np.int16))
+
+    # get the background file path and write
+    bkg_file = se_info['bkg_path'].replace(
+        '$MEDS_DIR', output_meds_dir)
+    make_dirs_for_file(bkg_file)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with StagedOutFile(bkg_file, tmpdir=tmpdir) as sf:
+            # copy to the place we stage from
+            shutil.copy(expand_path(se_info['bkg_path']), sf.path)
+
+            # open in read-write mode and replace the data
+            with fitsio.FITS(sf.path, mode='rw') as fits:
+                fits[se_info['bkg_ext']].write(background)
+
