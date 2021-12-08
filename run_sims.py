@@ -8,10 +8,10 @@ import click
 import yaml
 
 from band_infoing import make_band_info
-from simulating import End2EndSimulation
-from true_detecting import make_true_detections
-from medsing import make_meds_files
-from run_metacal import run_metacal
+#from simulating import End2EndSimulation
+#from true_detecting import make_true_detections
+#from medsing import make_meds_files
+#from run_metacal import run_metacal
 
 for lib in ['matts_misc.simple_des_y3_sims']:
     lgr = logging.getLogger(lib)
