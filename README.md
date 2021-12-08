@@ -6,6 +6,6 @@ Testing metacal measurements on simulated images
 
 2. activate the environment by doing ```conda activate shear```
 
-3. that's probably not a complete set of all packages you need; in particular you should download desmeds from https://github.com/esheldon/desmeds and install it manually - might not be needed! (the conda version doesn't have all we need); you'll also need the easyaccess stuff
+3. that's probably not a complete set of all packages you need; in particular you should download desmeds from https://github.com/esheldon/desmeds (because the conda version doesn't have all we need); you might or might not need to install desmeds manually following the instructions in that link; you'll also need easyaccess and other simpler conda-installable packages
 
 4. to run the basic prep stage, do for instance: ```python run_sims.py prep --tilename="DES0544-2249" --bands="riz" --output-desdata="outputs-DES0544-2249"```
