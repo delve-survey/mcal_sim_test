@@ -7,11 +7,11 @@ import sys
 import click
 import yaml
 
-from matts_misc.simple_des_y3_sims.band_infoing import make_band_info
-from matts_misc.simple_des_y3_sims.simulating import End2EndSimulation
-from matts_misc.simple_des_y3_sims.true_detecting import make_true_detections
-from matts_misc.simple_des_y3_sims.medsing import make_meds_files
-from matts_misc.simple_des_y3_sims.run_metacal import run_metacal
+from band_infoing import make_band_info
+#from matts_misc.simple_des_y3_sims.simulating import End2EndSimulation
+#from matts_misc.simple_des_y3_sims.true_detecting import make_true_detections
+#from matts_misc.simple_des_y3_sims.medsing import make_meds_files
+#from matts_misc.simple_des_y3_sims.run_metacal import run_metacal
 
 for lib in ['matts_misc.simple_des_y3_sims']:
     lgr = logging.getLogger(lib)
@@ -44,7 +44,7 @@ def prep(tilename, bands, output_desdata, n_files):
         bands=[b for b in bands],
         output_meds_dir=output_desdata,
         n_files=n_files)
-
+'''
 
 @cli.command()
 @click.option('--tilename', type=str, required=True,
@@ -71,7 +71,6 @@ def galsim(tilename, bands, output_desdata, seed, config_file):
     sim.run()
 
 #STOPPING here since we want to get the 2 first steps above done at first
-'''
 
 @cli.command('true-detection')
 @click.option('--tilename', type=str, required=True,
