@@ -5,11 +5,11 @@ import numpy as np
 import yaml
 import desmeds
 
-from .constants import MEDSCONF, PIFF_RUN
-from .files import (
+from constants import MEDSCONF, PIFF_RUN
+from files import (
     get_band_info_file,
     make_dirs_for_file)
-from .des_info import add_extra_des_coadd_tile_info
+from des_info import add_extra_des_coadd_tile_info
 
 logger = logging.getLogger(__name__)
 

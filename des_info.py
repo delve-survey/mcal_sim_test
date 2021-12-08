@@ -1,5 +1,5 @@
-from .constants import MAGZP_REF, POSITION_OFFSET
-from .files import get_piff_path_from_image_path
+from constants import MAGZP_REF, POSITION_OFFSET
+from files import get_piff_path_from_image_path
 
 
 def add_extra_des_coadd_tile_info(*, info, piff_run):
