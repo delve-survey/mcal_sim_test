@@ -10,3 +10,9 @@ export MEDS_DIR=/home/dhayaa/Desktop/DECADE/TEMP_MEDS/
 
 #Need this to point python to desmeds master file
 export PYTHONPATH=/home/dhayaa/Desktop/DECADE/desmeds_master:$PYTHONPATH
+
+#Need to set these for rsync:
+#export DESREMOTE_RSYNC=desar2.cosmology.illinois.edu::ALLDESFiles/desarchive
+#export DESREMOTE_RSYNC_USER=beckermr
+#export DES_RSYNC_PASSFILE=
+#${HOME}/.desrsyncpass
