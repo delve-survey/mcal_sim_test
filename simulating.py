@@ -1,6 +1,7 @@
 import logging
 import shutil
 import tempfile
+import os
 
 import numpy as np
 import yaml
@@ -23,6 +24,7 @@ from psf_wrapper import PSFWrapper
 
 logger = logging.getLogger(__name__)
 
+TMP_DIR = os.environ['TMPDIR']
 
 class End2EndSimulation(object):
     """An end-to-end DES Y3 simulation.
@@ -330,7 +332,7 @@ def _write_se_img_wgt_bkg(
 
     # get the final image file path and write
     image_file = se_info['image_path'].replace(
-        '$MEDS_DIR', output_meds_dir)
+        TMP_DIR, output_meds_dir)
     make_dirs_for_file(image_file)
     with tempfile.TemporaryDirectory() as tmpdir:
         with StagedOutFile(image_file, tmpdir=tmpdir) as sf:
@@ -346,7 +348,7 @@ def _write_se_img_wgt_bkg(
 
     # get the background file path and write
     bkg_file = se_info['bkg_path'].replace(
-        '$MEDS_DIR', output_meds_dir)
+        TMP_DIR, output_meds_dir)
     make_dirs_for_file(bkg_file)
     with tempfile.TemporaryDirectory() as tmpdir:
         with StagedOutFile(bkg_file, tmpdir=tmpdir) as sf:
