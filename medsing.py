@@ -21,6 +21,8 @@ from files import (
 logger = logging.getLogger(__name__)
 
 
+TMP_DIR = os.environ['TMPDIR']
+
 def make_meds_files(*, tilename, bands, output_meds_dir, psf_kws, meds_config):
     """Make a MEDS file for a given band and tilename.
 
@@ -57,10 +59,11 @@ def make_meds_files(*, tilename, bands, output_meds_dir, psf_kws, meds_config):
             band=band)
         with open(fname, 'r') as fp:
             info[band] = yaml.load(fp, Loader=yaml.Loader)
+            print(info[band]['image_path'])
 
     # always get the truth catalog from r band
     cat = fitsio.read(info['r']['cat_path'].replace(
-        '$MEDS_DIR', output_meds_dir))
+        TMP_DIR, output_meds_dir))
 
     for band in bands:
         logger.info(' doing band %s', band)
@@ -117,14 +120,14 @@ def _build_psf_data(*, info, psf_kws, output_meds_dir):
     def _load_psf_data(_info, force_gauss=False):
         wcs = get_galsim_wcs(
             image_path=_info['image_path'].replace(
-                '$MEDS_DIR', output_meds_dir),
+                TMP_DIR, output_meds_dir),
             image_ext=_info['image_ext'])
         if psf_kws['type'] == 'gauss' or force_gauss:
             return PSFWrapper(galsim.Gaussian(fwhm=0.9), wcs)
-        elif psf_kws['type'] == 'piff':
-            from ..des_piff import DES_Piff
-            piff_model = DES_Piff(expand_path(_info['piff_path']))
-            return PSFWrapper(piff_model, wcs)
+        #elif psf_kws['type'] == 'piff':
+        #    from ..des_piff import DES_Piff
+        #    piff_model = DES_Piff(expand_path(_info['piff_path']))
+        #    return PSFWrapper(piff_model, wcs)
         elif psf_kws['type'] == 'gauss-pix':
             from .gauss_pix_psf import GaussPixPSF
             kwargs = {k: psf_kws[k] for k in psf_kws if k != 'type'}
@@ -153,7 +156,7 @@ def _make_meds_metadata(*, band, tilename):
 
 def _make_meds_image_info_struct(*, info, output_meds_dir):
     def _munge_path(pth):
-        return pth.replace('$MEDS_DIR', output_meds_dir)
+        return pth.replace(TMP_DIR, output_meds_dir)
 
     # get WCS structures
     wcs_json = _load_wcs_json(info=info, output_meds_dir=output_meds_dir)
@@ -221,12 +224,12 @@ def _load_wcs_json(*, info, output_meds_dir):
 
     wcs_json = []
     hd = fitsio.read_header(
-        info['image_path'].replace('$MEDS_DIR', output_meds_dir),
+        info['image_path'].replace(TMP_DIR, output_meds_dir),
         ext=info['image_ext'])
     wcs_json.append(json.dumps(_munge_header(hd)))
     for se_info in info['src_info']:
         hd = fitsio.read_header(
-            se_info['image_path'].replace('$MEDS_DIR', output_meds_dir),
+            se_info['image_path'].replace(TMP_DIR, output_meds_dir),
             ext=se_info['image_ext'])
         wcs_json.append(json.dumps(_munge_header(hd)))
 
