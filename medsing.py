@@ -12,10 +12,10 @@ from esutil.ostools import StagedOutFile
 from meds.maker import MEDSMaker
 import desmeds.util
 
-from .constants import MAGZP_REF, MEDSCONF
-from .psf_wrapper import PSFWrapper
-from .wcsing import get_galsim_wcs
-from .files import (
+from constants import MAGZP_REF, MEDSCONF
+from psf_wrapper import PSFWrapper
+from wcsing import get_galsim_wcs
+from files import (
     get_band_info_file, get_meds_file_path, expand_path, make_dirs_for_file)
 
 logger = logging.getLogger(__name__)
