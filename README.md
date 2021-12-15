@@ -10,4 +10,4 @@ Testing metacal measurements on simulated images
 
 4. to run the basic prep stage, do for instance: ```python run_sims.py prep --tilename="DES0544-2249" --bands="riz" --output-desdata="outputs-DES0544-2249"```
 
-5. after running prep, do ```python run_sims.py galsim --tilename="DES0544-2249" --bands="riz" --output-desdata="outputs-DES0544-2249" --seed="42" --config-file="./runs/v000_no_detection/config.yaml"
+5. after running prep, do ```python run_sims.py galsim --tilename="DES0544-2249" --bands="riz" --output-desdata="outputs-DES0544-2249" --seed="42" --config-file="./runs/v000_no_detection/config.yaml"```
