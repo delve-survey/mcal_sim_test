@@ -8,8 +8,8 @@ import click
 import yaml
 
 from band_infoing import make_band_info
-#from simulating import End2EndSimulation
-#from true_detecting import make_true_detections
+from simulating import End2EndSimulation
+from true_detecting import make_true_detections
 #from medsing import make_meds_files
 #from run_metacal import run_metacal
 
@@ -44,7 +44,6 @@ def prep(tilename, bands, output_desdata, n_files):
         bands=[b for b in bands],
         output_meds_dir=output_desdata,
         n_files=n_files)
-'''
 
 @cli.command()
 @click.option('--tilename', type=str, required=True,
@@ -72,6 +71,7 @@ def galsim(tilename, bands, output_desdata, seed, config_file):
 
 #STOPPING here since we want to get the 2 first steps above done at first
 
+
 @cli.command('true-detection')
 @click.option('--tilename', type=str, required=True,
               help='the coadd tile to simulate')
@@ -91,7 +91,7 @@ def true_detection(tilename, bands, output_desdata, config_file):
         output_meds_dir=output_desdata,
         box_size=config['true_detection']['box_size'])
 
-
+'''
 @cli.command('swarp')
 def swarp():
     click.echo('run swarp for a tile')

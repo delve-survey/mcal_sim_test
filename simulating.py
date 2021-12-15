@@ -9,17 +9,17 @@ import galsim
 import fitsio
 from esutil.ostools import StagedOutFile
 
-from .files import (
+from files import (
     get_band_info_file,
     make_dirs_for_file,
     get_truth_catalog_path,
     expand_path)
-from .constants import MEDSCONF
-from .truthing import make_coadd_grid_radec
-from .sky_bounding import get_rough_sky_bounds, radec_to_uv
-from .wcsing import get_esutil_wcs, get_galsim_wcs
-from .galsiming import render_sources_for_image
-from .psf_wrapper import PSFWrapper
+from constants import MEDSCONF
+from truthing import make_coadd_grid_radec
+from sky_bounding import get_rough_sky_bounds, radec_to_uv
+from wcsing import get_esutil_wcs, get_galsim_wcs
+from galsiming import render_sources_for_image
+from psf_wrapper import PSFWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -292,7 +292,7 @@ def _render_all_objects(
         draw_method=draw_method,
         src_inds=msk_inds,
         src_func=src_func,
-        n_jobs=1)
+        n_jobs=10)
 
     return im.array
 

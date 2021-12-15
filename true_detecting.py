@@ -6,15 +6,16 @@ import yaml
 import fitsio
 import numpy as np
 
-from .files import (
+from files import (
     get_truth_catalog_path,
     get_band_info_file,
     expand_path,
     make_dirs_for_file)
-from .constants import MEDSCONF
+from constants import MEDSCONF
 
 logger = logging.getLogger(__name__)
 
+TMP_DIR = os.environ['TMPDIR']
 
 def make_true_detections(*, tilename, bands, output_meds_dir, box_size):
     """Make fake "true detection" catalogs as if source extractor had been
@@ -119,11 +120,12 @@ def _copy_and_munge_coadd(*, tilename, band, output_meds_dir):
     with open(fname, 'r') as fp:
         info = yaml.load(fp, Loader=yaml.Loader)
 
+
     dest_coadd_file = info['image_path'].replace(
-        '$MEDS_DIR', output_meds_dir)
+        TMP_DIR, output_meds_dir)
     make_dirs_for_file(dest_coadd_file)
     dest_seg_file = info['seg_path'].replace(
-        '$MEDS_DIR', output_meds_dir)
+        TMP_DIR, output_meds_dir)
     make_dirs_for_file(dest_seg_file)
 
     # copy over coadd file
@@ -165,4 +167,4 @@ def _copy_and_munge_coadd(*, tilename, band, output_meds_dir):
     except Exception:
         pass
 
-    return info['cat_path'].replace('$MEDS_DIR', output_meds_dir)
+    return info['cat_path'].replace(TMP_DIR, output_meds_dir)
