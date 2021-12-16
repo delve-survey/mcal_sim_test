@@ -13,3 +13,5 @@ Testing metacal measurements on simulated images
 5. after running prep, do ```python run_sims.py galsim --tilename="DES0544-2249" --bands="riz" --output-desdata="outputs-DES0544-2249" --seed="42" --config-file="./runs/v000_no_detection/config.yaml"```
 
 6. then, ```python run_sims.py true-detection --tilename="DES0544-2249" --bands="riz" --output-desdata="outputs-DES0544-2249"  --config-file="./runs/v000_no_detection/config.yaml"```
+
+7. then, ```python run_sims.py meds --tilename="DES0544-2249" --bands="riz" --output-desdata="outputs-DES0544-2249"  --config-file="./runs/v000_no_detection/config.yaml" --meds-config-file="./runs/v000_no_detection/meds.yaml"```
