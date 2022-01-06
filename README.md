@@ -16,6 +16,8 @@ Testing metacal measurements on simulated images
 
 7. then, ```python run_sims.py meds --tilename="DES0544-2249" --bands="riz" --output-desdata="outputs-DES0544-2249"  --config-file="./runs/v000_no_detection/config.yaml" --meds-config-file="./runs/v000_no_detection/meds.yaml"```
 
+8. home stretch: ```python run_sims.py metacal --tilename="DES0544-2249" --bands="riz" --output-desdata="outputs-DES0544-2249"  --seed="1"```
+
 
 #### Notes and caveats (from Lucas): 
 
