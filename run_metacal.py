@@ -6,11 +6,13 @@ import esutil as eu
 import fitsio
 from ngmix import ObsList, MultiBandObsList
 from ngmix.gexceptions import GMixRangeError
-from .ngmix_compat import NGMixMEDS, MultiBandNGMixMEDS, NGMIX_V1
+#from ngmix_compat import NGMixMEDS, MultiBandNGMixMEDS, NGMIX_V1
+from ngmix.medsreaders import NGMixMEDS, MultiBandNGMixMEDS#, NGMIX_V1
+NGMIX_V1=False #wild guess here
 
-from .files import get_meds_file_path, get_mcal_file_path, make_dirs_for_file
-from .metacal.metacal_fitter import MetacalFitter
-from .constants import MEDSCONF, MAGZP_REF
+from files import get_meds_file_path, get_mcal_file_path, make_dirs_for_file
+from metacal.metacal_fitter import MetacalFitter
+from constants import MEDSCONF, MAGZP_REF
 
 logger = logging.getLogger(__name__)
 
