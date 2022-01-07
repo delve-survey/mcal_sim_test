@@ -19,8 +19,15 @@ Testing metacal measurements on simulated images
 8. home stretch: ```python run_sims.py metacal --tilename="DES0544-2249" --bands="riz" --output-desdata="outputs-DES0544-2249"  --seed="1"```
 
 
-#### Notes and caveats (from Lucas): 
+#### Some notes and caveats (from Lucas): 
 
-1. starting when I picked up the code again in January, the kicpaa job node was expecting ```python3``` as opposed to ```python``` in the command line
+0. For testing, it's way better to set `--bands="r"` above so you do only one band
+
+1. Starting when I picked up the code again in January, the kicpaa job node was expecting ```python3``` as opposed to ```python``` in the command line
+
+2. I've had weird problems when some files were already existing from previous runs. Make sure you delete everything in the directory set by `output-desdata`, which above is simply `outputs-DES0544-2249`, as well as everything in the directory you're exporting as `TMP_DIR` and also everything in `MEDS_DIR`
+
+3. The `meds` step generates a lot of data (several gigabytes at least)
+
 
  
