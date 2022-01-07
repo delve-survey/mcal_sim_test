@@ -15,3 +15,12 @@ Testing metacal measurements on simulated images
 6. then, ```python run_sims.py true-detection --tilename="DES0544-2249" --bands="riz" --output-desdata="outputs-DES0544-2249"  --config-file="./runs/v000_no_detection/config.yaml"```
 
 7. then, ```python run_sims.py meds --tilename="DES0544-2249" --bands="riz" --output-desdata="outputs-DES0544-2249"  --config-file="./runs/v000_no_detection/config.yaml" --meds-config-file="./runs/v000_no_detection/meds.yaml"```
+
+8. home stretch: ```python run_sims.py metacal --tilename="DES0544-2249" --bands="riz" --output-desdata="outputs-DES0544-2249"  --seed="1"```
+
+
+#### Notes and caveats (from Lucas): 
+
+1. starting when I picked up the code again in January, the kicpaa job node was expecting ```python3``` as opposed to ```python``` in the command line
+
+ 
