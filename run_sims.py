@@ -10,8 +10,8 @@ import yaml
 from band_infoing import make_band_info
 from simulating import End2EndSimulation
 from true_detecting import make_true_detections
-#from medsing import make_meds_files
-#from run_metacal import run_metacal
+from medsing import make_meds_files
+from run_metacal import run_metacal
 
 for lib in ['matts_misc.simple_des_y3_sims']:
     lgr = logging.getLogger(lib)
@@ -91,7 +91,7 @@ def true_detection(tilename, bands, output_desdata, config_file):
         output_meds_dir=output_desdata,
         box_size=config['true_detection']['box_size'])
 
-'''
+
 @cli.command('swarp')
 def swarp():
     click.echo('run swarp for a tile')
@@ -143,7 +143,7 @@ def metacal(tilename, bands, output_desdata, seed):
         output_meds_dir=output_desdata,
         bands=[b for b in bands],
         seed=seed)
-'''
+
 
 if __name__ == '__main__':
     cli()
