@@ -32,4 +32,10 @@ Testing metacal measurements on simulated images
 3. The `meds` step generates a lot of data (several gigabytes at least)
 
 
+ # Results
  
+ ### v000
+
+    size      N = 448962
+    recovered m = 0.213 +/- 0.263 [1e-3, 3-sigma]
+    recovered c = 0.103 +/- 0.425 [1e-5, 3-sigma]
