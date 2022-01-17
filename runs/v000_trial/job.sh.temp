@@ -1,0 +1,65 @@
+#!/bin/bash
+#SBATCH --job-name metacal_{{ tilename }}_seed{{ seed_galsim }}_g{{ plus_or_minus }}
+#SBATCH --partition=broadwl
+##SBATCH --partition=chihway
+#SBATCH --account=pi-chihway
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=28
+##SBATCH --ntasks-per-node=40
+#SBATCH --time=10:00:00
+#SBATCH --output=/home/dhayaa/Desktop/DECADE/mcal_sim_test/runs/v000_trial/%x.log
+#SBATCH --mail-user=dhayaa@uchicago.edu
+#SBATCH --mail-type=BEGIN,END
+
+
+cd /home/dhayaa/Desktop/DECADE/mcal_sim_test/
+module load python
+conda activate shear
+source /home/dhayaa/Desktop/DECADE/bash_profile.sh
+
+
+output="$PREP_DIR/outputs_{{ tilename }}_seed{{ seed_galsim }}_g{{ plus_or_minus }}"
+bands="riz"
+tilename="{{ tilename }}"
+
+
+#python run_sims.py \
+#  prep \
+#  --tilename="$tilename" \
+#  --bands="$bands" \
+#  --output-desdata="$output"
+
+python run_sims.py \
+  galsim \
+  --tilename="$tilename" \
+  --bands="$bands" \
+  --output-desdata="$output" \
+  --config-file="runs/v000_trial/config_{{ plus_or_minus }}.yaml" \
+  --seed="{{ seed_galsim }}"
+
+python run_sims.py \
+  true-detection \
+  --tilename="$tilename" \
+  --bands="$bands" \
+  --output-desdata="$output" \
+  --config-file="runs/v000_trial/config_{{ plus_or_minus }}.yaml"
+
+python run_sims.py \
+  meds \
+  --tilename="$tilename" \
+  --bands="$bands" \
+  --output-desdata="$output" \
+  --config-file="runs/v000_trial/config_{{ plus_or_minus }}.yaml" \
+  --meds-config-file="runs/v000_trial/meds.yaml"
+
+python run_sims.py \
+  metacal \
+  --tilename="$tilename" \
+  --bands="$bands" \
+  --output-desdata="$output" \
+  --seed="{{ seed_mcal }}"
+
+
+mv "$output/metacal/y3v02/{{ tilename }}_metacal.fits" "/project2/chihway/dhayaa/DECADE/Tests/v000_trial/metacal_{{ tilename }}_seed{{ seed_galsim }}_g{{ plus_or_minus }}.fits"
+
+rm -rf $output
