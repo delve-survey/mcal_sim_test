@@ -37,5 +37,5 @@ Testing metacal measurements on simulated images
  ### v000
 
     size      N = 448962
-    recovered m = 0.219 +/- 0.272 [1e-3, 3-sigma]
-    recovered c = -0.118 +/- 0.434 [1e-5, 3-sigma]
+    recovered m = 0.213 +/- 0.263 [1e-3, 3-sigma]
+    recovered c = 0.103 +/- 0.425 [1e-5, 3-sigma]
