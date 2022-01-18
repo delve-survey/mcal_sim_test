@@ -1,7 +1,7 @@
 gal_kws:
   type: exp
   n_grid: 300
-  g1: 0.02
+  g1: {{ g1 }}
   g2: 0.0
 
 psf_kws:

@@ -1,5 +1,6 @@
 import os
 import jinja2
+import yaml
 
 tilenames = [
     'DES0544-2249',
@@ -46,6 +47,35 @@ tilenames = [
 # 'DES2137+0209']
 
 
+#Automatically get folder name (assuming certain folder structure)
+name = os.path.basename(os.getcwd())
+
+#Create output directory for metacal
+os.makedirs('/project2/chihway/dhayaa/DECADE/Tests/' + name, exist_ok=True)
+
+
+
+#Create the config file
+with open('config.yaml.temp', 'r') as fp:
+    tmp = jinja2.Template(fp.read())
+
+
+for g_sign, g_multiplier in zip(['plus', 'minus'], [1, -1]): 
+    with open('config_%s.yaml'%g_sign, 'w') as fp:
+        fp.write(tmp.render(g1 = 0.02*g_multiplier))
+
+
+
+#Create clean_dirs command for easy use
+with open('clean_dirs.sh.temp', 'r') as fp:
+    tmp = jinja2.Template(fp.read())
+
+with open('clean_dirs.sh', 'w') as fp:
+    fp.write(tmp.render(current_directory = os.getcwd()))
+
+
+
+#Now create all job.sh files for running sims
 with open('job.sh.temp', 'r') as fp:
     tmp = jinja2.Template(fp.read())
 
@@ -54,8 +84,8 @@ for i, tilename in enumerate(tilenames):
     os.system('python /home/dhayaa/Desktop/DECADE/mcal_sim_test/run_sims.py prep --tilename="%s" --bands="riz" --output-desdata="$PREP_DIR/outputs_%s_seed%d_gplus"'%(tilename, tilename, gal_seed))
     os.system('cp -r $PREP_DIR/outputs_%s_seed0_gplus $PREP_DIR/outputs_%s_seed0_gminus'%(tilename, tilename))
     with open('job_%s_plus.sh' % tilename, 'w') as fp:
-        fp.write(tmp.render(tilename=tilename, plus_or_minus = "plus", seed_galsim=gal_seed, seed_mcal=42))
+        fp.write(tmp.render(tilename=tilename, model_name = name, plus_or_minus = "plus", seed_galsim=gal_seed, seed_mcal=42))
     with open('job_%s_minus.sh' % tilename, 'w') as fp:
-        fp.write(tmp.render(tilename=tilename, plus_or_minus = "minus", seed_galsim=gal_seed, seed_mcal=42))
+        fp.write(tmp.render(tilename=tilename, model_name = name, plus_or_minus = "minus", seed_galsim=gal_seed, seed_mcal=42))
     os.system('chmod u+x job_%s_plus.sh' % tilename)
     os.system('chmod u+x job_%s_minus.sh' % tilename)

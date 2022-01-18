@@ -7,7 +7,7 @@
 #SBATCH --ntasks-per-node=28
 ##SBATCH --ntasks-per-node=40
 #SBATCH --time=10:00:00
-#SBATCH --output=/home/dhayaa/Desktop/DECADE/mcal_sim_test/runs/v000_trial/%x.log
+#SBATCH --output=/home/dhayaa/Desktop/DECADE/mcal_sim_test/runs/{{ model_name }}/%x.log
 #SBATCH --mail-user=dhayaa@uchicago.edu
 #SBATCH --mail-type=BEGIN,END
 
@@ -34,7 +34,7 @@ python run_sims.py \
   --tilename="$tilename" \
   --bands="$bands" \
   --output-desdata="$output" \
-  --config-file="runs/v000_trial/config_{{ plus_or_minus }}.yaml" \
+  --config-file="runs/{{ model_name }}/config_{{ plus_or_minus }}.yaml" \
   --seed="{{ seed_galsim }}"
 
 python run_sims.py \
@@ -42,15 +42,15 @@ python run_sims.py \
   --tilename="$tilename" \
   --bands="$bands" \
   --output-desdata="$output" \
-  --config-file="runs/v000_trial/config_{{ plus_or_minus }}.yaml"
+  --config-file="runs/{{ model_name }}/config_{{ plus_or_minus }}.yaml"
 
 python run_sims.py \
   meds \
   --tilename="$tilename" \
   --bands="$bands" \
   --output-desdata="$output" \
-  --config-file="runs/v000_trial/config_{{ plus_or_minus }}.yaml" \
-  --meds-config-file="runs/v000_trial/meds.yaml"
+  --config-file="runs/{{ model_name }}/config_{{ plus_or_minus }}.yaml" \
+  --meds-config-file="runs/{{ model_name }}/meds.yaml"
 
 python run_sims.py \
   metacal \
@@ -60,6 +60,6 @@ python run_sims.py \
   --seed="{{ seed_mcal }}"
 
 
-mv "$output/metacal/y3v02/{{ tilename }}_metacal.fits" "/project2/chihway/dhayaa/DECADE/Tests/v000_trial/metacal_{{ tilename }}_seed{{ seed_galsim }}_g{{ plus_or_minus }}.fits"
+mv "$output/metacal/y3v02/{{ tilename }}_metacal.fits" "/project2/chihway/dhayaa/DECADE/Tests/{{ model_name }}/metacal_{{ tilename }}_seed{{ seed_galsim }}_g{{ plus_or_minus }}.fits"
 
 rm -rf $output

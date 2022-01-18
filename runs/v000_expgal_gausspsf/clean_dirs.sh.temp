@@ -8,5 +8,5 @@ rm -r /home/dhayaa/scratch-midway2/MEDS_DIR/*
 rm -r /home/dhayaa/scratch-midway2/PREP_OUTPUTS/*
 
 
-rm //home/dhayaa/Desktop/DECADE/mcal_sim_test/runs/v000_expgal_gausspsf/job_*
-rm //home/dhayaa/Desktop/DECADE/mcal_sim_test/runs/v000_expgal_gausspsf/*.log
+rm /{{ current_directory}}/job_*
+rm /{{ current_directory}}/*.log
