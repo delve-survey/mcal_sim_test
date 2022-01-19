@@ -82,7 +82,8 @@ with open('job.sh.temp', 'r') as fp:
 for i, tilename in enumerate(tilenames):
     gal_seed = 0
     os.system('python /home/dhayaa/Desktop/DECADE/mcal_sim_test/run_sims.py prep --tilename="%s" --bands="riz" --output-desdata="$PREP_DIR/outputs_%s_seed%d_gplus"'%(tilename, tilename, gal_seed))
-    os.system('cp -r $PREP_DIR/outputs_%s_seed0_gplus $PREP_DIR/outputs_%s_seed0_gminus'%(tilename, tilename))
+    os.system('cp -r $PREP_DIR/outputs_%s_seed%d_gplus $PREP_DIR/outputs_%s_seed%d_gminus'%(tilename, gal_seed, tilename, gal_seed))
+    
     with open('job_%s_plus.sh' % tilename, 'w') as fp:
         fp.write(tmp.render(tilename=tilename, model_name = name, plus_or_minus = "plus", seed_galsim=gal_seed, seed_mcal=42))
     with open('job_%s_minus.sh' % tilename, 'w') as fp:
