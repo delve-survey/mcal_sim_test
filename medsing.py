@@ -129,7 +129,7 @@ def _build_psf_data(*, info, psf_kws, output_meds_dir):
         #    piff_model = DES_Piff(expand_path(_info['piff_path']))
         #    return PSFWrapper(piff_model, wcs)
         elif psf_kws['type'] == 'gauss-pix':
-            from .gauss_pix_psf import GaussPixPSF
+            from gauss_pix_psf import GaussPixPSF
             kwargs = {k: psf_kws[k] for k in psf_kws if k != 'type'}
             psf_model = GaussPixPSF(**kwargs)
             return PSFWrapper(psf_model, wcs)
