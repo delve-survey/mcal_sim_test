@@ -3,7 +3,7 @@ import galsim.des
 
 #from ..des_piff import DES_Piff
 from gauss_pix_psf import GaussPixPSF
-
+from galsim.des import DES_PSFEx
 
 class PSFWrapper(object):
     """Wrapper to interface galsim objects.
@@ -81,6 +81,8 @@ class PSFWrapper(object):
         elif isinstance(self.psf, GaussPixPSF):
             wcs = self.wcs.local(image_pos)
             return self.psf.getPSF(image_pos, wcs)
+        elif isinstance(self.psf, DES_PSFEx):
+            return self.psf.getPSF(image_pos) #Wrapper doesn't take wcs. Need to pass it when reading file.
         else:
             raise ValueError(
                 'We did not recognize the PSF type! %s' % self.psf)
@@ -106,6 +108,7 @@ class PSFWrapper(object):
         # zero offset positions and galsim + DES stuff expects one-offset
         im_pos = galsim.PositionD(x=col+1, y=row+1)
         wcs = self.wcs.local(im_pos)
+        
         if isinstance(self.psf, galsim.GSObject):
             psf_im = self.psf.drawImage(
                 nx=self.n_pix, ny=self.n_pix,
@@ -118,6 +121,9 @@ class PSFWrapper(object):
             psf_at_pos = self.psf.getPSF(im_pos, wcs)
             psf_im = psf_at_pos.drawImage(
                 wcs=wcs, nx=self.n_pix, ny=self.n_pix).array
+        elif isinstance(self.psf, DES_PSFEx):
+            psf_at_pos = self.psf.getPSF(im_pos) #No wcs passed here. Need to pass when reading file.
+            psf_im = psf_at_pos.drawImage(nx=self.n_pix, ny=self.n_pix, method = 'no_pixel').array #Need to use no_pixel because PSF is already convolved with pixel scale
         else:
             raise ValueError(
                 'We did not recognize the PSF type! %s' % self.psf)

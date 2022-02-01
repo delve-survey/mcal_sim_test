@@ -72,8 +72,11 @@ class End2EndSimulation(object):
         # any object within a 128 coadd pixel buffer of the edge of a CCD
         # will be rendered for that CCD
         self.bounds_buffer_uv = 128 * 0.263
-
-        self.draw_method = 'auto'
+        
+        if self.psf_kws['type'] == 'psfex':
+            self.draw_method = 'no_pixel'
+        else:
+            self.draw_method = 'auto'
 
         # make the RNGS
         # one for galaxies in the truth catalog
@@ -142,6 +145,9 @@ class End2EndSimulation(object):
             p(jobs)
 
     def _make_psf_wrapper(self, *, se_info):
+        
+        wcs = get_galsim_wcs(image_path=se_info['image_path'], image_ext=se_info['image_ext'])
+
         if self.psf_kws['type'] == 'gauss':
             psf_model = galsim.Gaussian(fwhm=0.9)
         #elif self.psf_kws['type'] == 'piff':
@@ -153,13 +159,14 @@ class End2EndSimulation(object):
             kwargs = {k: self.psf_kws[k] for k in self.psf_kws if k != 'type'}
             psf_model = GaussPixPSF(**kwargs)
             assert self.draw_method == 'auto'
+        elif self.psf_kws['type'] == 'psfex':
+            from galsim.des import DES_PSFEx
+            psf_model = DES_PSFEx(expand_path(se_info['psfex_path']), wcs = wcs) #Need to pass wcs when reading file
+            assert self.draw_method == 'no_pixel'
         else:
             raise ValueError(
                 "psf type '%s' not recognized!" % self.psf_kws['type'])
 
-        wcs = get_galsim_wcs(
-            image_path=se_info['image_path'],
-            image_ext=se_info['image_ext'])
         psf_wrap = PSFWrapper(psf_model, wcs)
 
         return psf_wrap

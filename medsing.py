@@ -60,7 +60,8 @@ def make_meds_files(*, tilename, bands, output_meds_dir, psf_kws, meds_config):
         with open(fname, 'r') as fp:
             info[band] = yaml.load(fp, Loader=yaml.Loader)
             print(info[band]['image_path'])
-
+            #for k in info[band].keys():
+            #    print(k, info[band][k])
     # always get the truth catalog from r band
     cat = fitsio.read(info['r']['cat_path'].replace(
         TMP_DIR, output_meds_dir))
@@ -133,12 +134,17 @@ def _build_psf_data(*, info, psf_kws, output_meds_dir):
             kwargs = {k: psf_kws[k] for k in psf_kws if k != 'type'}
             psf_model = GaussPixPSF(**kwargs)
             return PSFWrapper(psf_model, wcs)
+        elif psf_kws['type'] == 'psfex':
+            from galsim.des import DES_PSFEx
+            psfex_model = DES_PSFEx(expand_path(_info['psfex_path']), wcs = wcs)
+            return PSFWrapper(psfex_model, wcs)
         else:
             raise ValueError("psf type '%s' is not valid!" % psf_kws['type'])
 
-    force_gauss = psf_kws['type'] in ['piff']
-    psf_data = [_load_psf_data(info, force_gauss=force_gauss)]
+    force_gauss = psf_kws['type'] in ['psfex', 'piff']
+    psf_data = [_load_psf_data(info, force_gauss=force_gauss)] #QUESTION FOR MATT: Do we force gaussian because we don't care about coadd image?
     for se_info in info['src_info']:
+        #print(se_info.keys())
         psf_data.append(_load_psf_data(se_info))
     return psf_data
 
