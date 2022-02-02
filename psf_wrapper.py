@@ -123,7 +123,8 @@ class PSFWrapper(object):
                 wcs=wcs, nx=self.n_pix, ny=self.n_pix).array
         elif isinstance(self.psf, DES_PSFEx):
             psf_at_pos = self.psf.getPSF(im_pos) #No wcs passed here. Need to pass when reading file.
-            psf_im = psf_at_pos.drawImage(nx=self.n_pix, ny=self.n_pix, method = 'no_pixel').array #Need to use no_pixel because PSF is already convolved with pixel scale
+            psf_im = psf_at_pos.drawImage(
+                wcs=wcs, nx=self.n_pix, ny=self.n_pix, method = 'no_pixel').array #Need to use no_pixel because PSF is already convolved with pixel scale
         else:
             raise ValueError(
                 'We did not recognize the PSF type! %s' % self.psf)
