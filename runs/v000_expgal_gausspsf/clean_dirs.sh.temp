@@ -3,9 +3,9 @@
 #that we load data into. Also removes all job.sh
 #and log files from the current directory
 
-rm -r /home/dhayaa/scratch-midway2/TMP_DIR/*
-rm -r /home/dhayaa/scratch-midway2/MEDS_DIR/*
-rm -r /home/dhayaa/scratch-midway2/PREP_OUTPUTS/*
+rm -r $TMPDIR/*
+rm -r $MEDS_DIR*
+rm -r $PREP_DIR/*
 
 
 rm /{{ current_directory}}/job_*

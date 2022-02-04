@@ -17,6 +17,11 @@ export PYTHONPATH=/home/dhayaa/Desktop/DECADE/desmeds_master:$PYTHONPATH
 #TMP DIR
 export TMPDIR=/scratch/midway2/dhayaa/TMP_DIR
 
+#export extra directory locations 
+export PREP_DIR=/path/to/prep/stage/outputs
+export RUN_DIR=/path/to/mcal_sim_test_repo
+export MCAL_DIR=/path/to/output/mcal/files
+
 #Need to set these for rsync:
 #export DESREMOTE_RSYNC=desar2.cosmology.illinois.edu::ALLDESFiles/desarchive
 #export DESREMOTE_RSYNC_USER=beckermr
