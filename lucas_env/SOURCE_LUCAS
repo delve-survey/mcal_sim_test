@@ -1,0 +1,16 @@
+module load python
+conda activate shear
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/oracle_instant_client/instantclient_21_1:/home/secco/cfitsio/cfitsio-4.0.0
+export PYTHONPATH=$PYTHONPATH:/home/secco/desmeds:/home/secco/delve_cs_test/code/newish_metacal:/home/secco/delve_cs_test/code/newish_metacal/metacal
+export PATH=$PATH:/home/secco/cfitsio/cfitsio-4.0.0
+
+export MEDS_DIR=/home/secco/scratch-midway2/delve/MEDS_DIR/
+export TMPDIR=/home/secco/scratch-midway2/delve/TMP_DIR
+export PREP_DIR=/home/secco/scratch-midway2/delve/PREP_DIR
+export RUN_DIR=/home/secco/SHEAR/mcal_sim_test
+export MCAL_DIR=/home/secco/project2-kicp-secco/delve/MCAL_OUTPUTS
+
+export DESREMOTE_RSYNC=desar2.cosmology.illinois.edu::ALLDESFiles/desarchive
+export DESREMOTE_RSYNC_USER=lsecco
+export DES_RSYNC_PASSFILE=${HOME}/.desrsyncpass
+
