@@ -150,19 +150,28 @@ class End2EndSimulation(object):
 
         if self.psf_kws['type'] == 'gauss':
             psf_model = galsim.Gaussian(fwhm=0.9)
+        
         #elif self.psf_kws['type'] == 'piff':
         #    from ..des_piff import DES_Piff
         #    psf_model = DES_Piff(expand_path(se_info['piff_path']))
         #    assert self.draw_method == 'auto'
+        
         elif self.psf_kws['type'] == 'gauss-pix':
             from gauss_pix_psf import GaussPixPSF
             kwargs = {k: self.psf_kws[k] for k in self.psf_kws if k != 'type'}
             psf_model = GaussPixPSF(**kwargs)
             assert self.draw_method == 'auto'
+        
         elif self.psf_kws['type'] == 'psfex':
             from galsim.des import DES_PSFEx
             psf_model = DES_PSFEx(expand_path(se_info['psfex_path']), wcs = wcs) #Need to pass wcs when reading file
             assert self.draw_method == 'no_pixel'
+        
+        elif self.psf_kws['type'] == 'psfex_deconvolved':
+            from des_psfex import DES_PSFEx_Deconv
+            psf_model = DES_PSFEx_Deconv(expand_path(se_info['psfex_path']), wcs = wcs) #Need to pass wcs when reading file
+            assert self.draw_method == 'auto' #Don't need no_pixel since psf already deconvolved
+        
         else:
             raise ValueError(
                 "psf type '%s' not recognized!" % self.psf_kws['type'])

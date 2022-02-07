@@ -4,6 +4,7 @@ import galsim.des
 #from ..des_piff import DES_Piff
 from gauss_pix_psf import GaussPixPSF
 from galsim.des import DES_PSFEx
+from des_psfex import DES_PSFEx_Deconv
 
 class PSFWrapper(object):
     """Wrapper to interface galsim objects.
@@ -75,14 +76,21 @@ class PSFWrapper(object):
         """
         if isinstance(self.psf, galsim.GSObject):
             return self.psf
+        
         #elif isinstance(self.psf, DES_Piff):
         #    wcs = self.wcs.local(image_pos)
         #    return self.psf.getPSF(image_pos, wcs)
+        
         elif isinstance(self.psf, GaussPixPSF):
             wcs = self.wcs.local(image_pos)
             return self.psf.getPSF(image_pos, wcs)
+        
         elif isinstance(self.psf, DES_PSFEx):
             return self.psf.getPSF(image_pos) #Wrapper doesn't take wcs. Need to pass it when reading file.
+        
+        elif isinstance(self.psf, DES_PSFEx_Deconv):
+            return self.psf.getPSF(image_pos)
+        
         else:
             raise ValueError(
                 'We did not recognize the PSF type! %s' % self.psf)
@@ -113,18 +121,27 @@ class PSFWrapper(object):
             psf_im = self.psf.drawImage(
                 nx=self.n_pix, ny=self.n_pix,
                 wcs=wcs).array
+        
         #elif isinstance(self.psf, DES_Piff):
         #    psf_at_pos = self.psf.getPSF(im_pos, wcs)
         #    psf_im = psf_at_pos.drawImage(
         #        wcs=wcs, nx=self.n_pix, ny=self.n_pix).array
+        
         elif isinstance(self.psf, GaussPixPSF):
             psf_at_pos = self.psf.getPSF(im_pos, wcs)
             psf_im = psf_at_pos.drawImage(
                 wcs=wcs, nx=self.n_pix, ny=self.n_pix).array
+        
         elif isinstance(self.psf, DES_PSFEx):
             psf_at_pos = self.psf.getPSF(im_pos) #No wcs passed here. Need to pass when reading file.
             psf_im = psf_at_pos.drawImage(
                 wcs=wcs, nx=self.n_pix, ny=self.n_pix, method = 'no_pixel').array #Need to use no_pixel because PSF is already convolved with pixel scale
+        
+        elif isinstance(self.psf, DES_PSFEx_Deconv):
+            psf_at_pos = self.psf.getPSF(im_pos) #No wcs passed here. Need to pass when reading file.
+            psf_im = psf_at_pos.drawImage(
+                wcs=wcs, nx=self.n_pix, ny=self.n_pix).array 
+        
         else:
             raise ValueError(
                 'We did not recognize the PSF type! %s' % self.psf)

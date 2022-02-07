@@ -123,25 +123,35 @@ def _build_psf_data(*, info, psf_kws, output_meds_dir):
             image_path=_info['image_path'].replace(
                 TMP_DIR, output_meds_dir),
             image_ext=_info['image_ext'])
+        
         if psf_kws['type'] == 'gauss' or force_gauss:
             return PSFWrapper(galsim.Gaussian(fwhm=0.9), wcs)
+        
         #elif psf_kws['type'] == 'piff':
         #    from ..des_piff import DES_Piff
         #    piff_model = DES_Piff(expand_path(_info['piff_path']))
         #    return PSFWrapper(piff_model, wcs)
+        
         elif psf_kws['type'] == 'gauss-pix':
             from gauss_pix_psf import GaussPixPSF
             kwargs = {k: psf_kws[k] for k in psf_kws if k != 'type'}
             psf_model = GaussPixPSF(**kwargs)
             return PSFWrapper(psf_model, wcs)
+        
         elif psf_kws['type'] == 'psfex':
             from galsim.des import DES_PSFEx
             psfex_model = DES_PSFEx(expand_path(_info['psfex_path']), wcs = wcs)
             return PSFWrapper(psfex_model, wcs)
+        
+        elif psf_kws['type'] == 'psfex_deconvolved':
+            from des_psfex import DES_PSFEx_Deconv
+            psfex_model = DES_PSFEx_Deconv(expand_path(_info['psfex_path']), wcs = wcs)
+            return PSFWrapper(psfex_model, wcs)
+        
         else:
             raise ValueError("psf type '%s' is not valid!" % psf_kws['type'])
 
-    force_gauss = psf_kws['type'] in ['psfex', 'piff']
+    force_gauss = psf_kws['type'] in ['psfex', 'psfex_deconvolved', 'piff']
     psf_data = [_load_psf_data(info, force_gauss=force_gauss)] #QUESTION FOR MATT: Do we force gaussian because we don't care about coadd image?
     for se_info in info['src_info']:
         #print(se_info.keys())
