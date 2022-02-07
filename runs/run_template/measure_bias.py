@@ -18,6 +18,8 @@ N = len(tilenames)
 name     = os.path.basename(os.path.dirname(__file__))
 MCAL_DIR = os.environ['MCAL_DIR']
 PATH     = MCAL_DIR + '/' + name
+print('GETTING MCAL FILES FROM:')
+print(PATH)
 
 gplus  = [fits.open(PATH + '/metacal_%s_seed0_gplus.fits'%t) for t in tilenames]
 gminus = [fits.open(PATH + '/metacal_%s_seed0_gminus.fits'%t) for t in tilenames]
