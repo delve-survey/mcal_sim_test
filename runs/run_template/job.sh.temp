@@ -7,8 +7,8 @@
 #SBATCH --ntasks-per-node=28
 ##SBATCH --ntasks-per-node=40
 #SBATCH --time=10:00:00
-#SBATCH --output=/home/dhayaa/Desktop/DECADE/mcal_sim_test/runs/{{ model_name }}/%x.log
-#SBATCH --mail-user=dhayaa@uchicago.edu
+#SBATCH --output=$RUN_DIR/runs/{{ model_name }}/%x.log
+#SBATCH --mail-user=$EMAIL_ID
 #SBATCH --mail-type=BEGIN,END
 
 
