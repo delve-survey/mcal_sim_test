@@ -12,11 +12,13 @@
 #SBATCH --mail-type=BEGIN,END
 
 
-cd /home/dhayaa/Desktop/DECADE/mcal_sim_test/
-module load python
-conda activate shear
-source /home/dhayaa/Desktop/DECADE/bash_profile.sh
-
+if [ "$USER" == "dhayaa" ]
+then
+    cd /home/dhayaa/Desktop/DECADE/mcal_sim_test/
+    module load python
+    conda activate shear
+    source /home/dhayaa/Desktop/DECADE/bash_profile.sh
+fi
 
 output="$PREP_DIR/outputs_{{ tilename }}_seed{{ seed_galsim }}_g{{ plus_or_minus }}"
 bands="riz"

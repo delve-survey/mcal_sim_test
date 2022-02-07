@@ -2,6 +2,7 @@ from astropy.io import fits
 import numpy as np
 import os
 from tqdm import tqdm
+import sys
 
 from render_jobs import tilenames
 
