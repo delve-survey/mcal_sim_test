@@ -20,6 +20,13 @@ then
     source /home/dhayaa/Desktop/DECADE/bash_profile.sh
 fi
 
+if [ "$USER" == "secco"  ]
+then
+    cd /home/secco/SHEAR/mcal_sim_test/
+    source lucas_env/SOURCE_LUCAS
+fi
+
+
 output="$PREP_DIR/outputs_{{ tilename }}_seed{{ seed_galsim }}_g{{ plus_or_minus }}"
 bands="riz"
 tilename="{{ tilename }}"
@@ -31,6 +38,9 @@ tilename="{{ tilename }}"
 #  --bands="$bands" \
 #  --output-desdata="$output"
 
+NOW=$( date '+%H:%M:%S' )
+echo "Starting galsim stage at $NOW"
+
 python run_sims.py \
   galsim \
   --tilename="$tilename" \
@@ -39,12 +49,18 @@ python run_sims.py \
   --config-file="runs/{{ model_name }}/config_{{ plus_or_minus }}.yaml" \
   --seed="{{ seed_galsim }}"
 
+NOW=$( date '+%H:%M:%S' )
+echo "Completed galsim and starting true-detection at $NOW"
+
 python run_sims.py \
   true-detection \
   --tilename="$tilename" \
   --bands="$bands" \
   --output-desdata="$output" \
   --config-file="runs/{{ model_name }}/config_{{ plus_or_minus }}.yaml"
+
+NOW=$( date '+%H:%M:%S' )
+echo "Completed true-detection and starting meds at $NOW"
 
 python run_sims.py \
   meds \
@@ -54,6 +70,9 @@ python run_sims.py \
   --config-file="runs/{{ model_name }}/config_{{ plus_or_minus }}.yaml" \
   --meds-config-file="runs/{{ model_name }}/meds.yaml"
 
+NOW=$( date '+%H:%M:%S' )
+echo "Completed meds and starting mcal at $NOW"
+
 python run_sims.py \
   metacal \
   --tilename="$tilename" \
@@ -61,6 +80,8 @@ python run_sims.py \
   --output-desdata="$output" \
   --seed="{{ seed_mcal }}"
 
+NOW=$( date '+%H:%M:%S' )
+echo "Completed mcal and moving output to $MCAL_DIR/{{ model_name }} at $NOW"
 
 mv "$output/metacal/y3v02/{{ tilename }}_metacal.fits" "/project2/chihway/dhayaa/DECADE/Tests/{{ model_name }}/metacal_{{ tilename }}_seed{{ seed_galsim }}_g{{ plus_or_minus }}.fits"
 
