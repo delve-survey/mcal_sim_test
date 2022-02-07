@@ -68,32 +68,23 @@ class DES_PSFEx_Deconv(object):
                     try:
                         am = Admom(rng=rng)
                         res = am.go(obs, 0.3)
-                        #res = am.get_result()
-                        #print(res)
-                        #print("Here", count)
                         if res['flags'] != 0:
-                            #print(res)
-                            #print("Here", count)
                             continue
 
                         lm = LMSimple('turb')
                         lm_res = lm.go(obs, res['pars'])
-                        #lm_res = lm.get_result()
                         if lm_res['flags'] == 0:
                             _g1 = lm_res['pars'][2]
                             _g2 = lm_res['pars'][3]
                             _T = lm_res['pars'][4]
                             break
                     except ngmix.gexceptions.GMixRangeError:
-                        #print("!!!!!!!!!!!!! IN EXCEPTIONS !!!!!!!!!!!!!!!!!")
                         pass
 
                 pars[yi, xi, 0] = _g1
                 pars[yi, xi, 1] = _g2
                 pars[yi, xi, 2] = _T
-                #print(res)
-                #print(lm_res)
-                #print('------------------------/n/n')
+
         xloc = xloc.ravel()
         yloc = yloc.ravel()
         pos = np.stack([xloc, yloc], axis=1)
@@ -158,7 +149,7 @@ class DES_PSFEx_Deconv(object):
         dy = image_pos.y - int(image_pos.y + 0.5)
 
         psf = self.getPSFEx().getPSF(image_pos).drawImage(
-            #center=image_pos,
+            #center=image_pos, #Dhayaa: Not using center here to drae image. PSF is already obtained at image_pos.
             image=image,
             offset=(-dx, -dy))
 
