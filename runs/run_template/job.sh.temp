@@ -85,4 +85,4 @@ echo "Completed mcal and moving output to $MCAL_DIR/{{ model_name }} at $NOW"
 
 mv "$output/metacal/y3v02/{{ tilename }}_metacal.fits" "/project2/chihway/dhayaa/DECADE/Tests/{{ model_name }}/metacal_{{ tilename }}_seed{{ seed_galsim }}_g{{ plus_or_minus }}.fits"
 
-rm -rf $output
+#rm -rf $output
