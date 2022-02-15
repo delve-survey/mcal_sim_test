@@ -25,7 +25,7 @@ class NonGaussPixPSF(object):
     getPSF(image_pos)
         Get the PSF represented as an interpolated image at a point.
     """
-    def __init__(self, *,gstd=0.01, beta=3.0, scale_radius=0.9,fwhm_frac_std=0.1, s2n=None):
+    def __init__(self, *,draw_with_wcs,gstd=0.01, beta=3.0, scale_radius=0.9,fwhm_frac_std=0.1, s2n=None):
         self.gstd = gstd
         self.beta = beta
         self.scale_radius = scale_radius
@@ -59,14 +59,14 @@ class NonGaussPixPSF(object):
         g2 = rng.normal() * self.gstd
         fwhm = (
             rng.uniform(low=-self.fwhm_frac_std, high=self.fwhm_frac_std) +
-            1.0) * scale_radius
+            1.0) * self.scale_radius
         #psf = galsim.Gaussian(fwhm=fwhm).shear(g1=g1, g2=g2).withFlux(1.0)
-        psf = galsim.Moffat(beta=beta,scale_radius=fwhm).shear(g1=g1, g2=g2).withFlux(1.0)
+        psf = galsim.Moffat(beta=self.beta,scale_radius=fwhm).shear(g1=g1, g2=g2).withFlux(1.0)
         
-        if draw_with_wcs==False:
+        if self.draw_with_wcs==False:
             psf_im = psf.drawImage(
                 nx=69, ny=69, scale=0.125, method='no_pixel').array
-        if draw_with_wcs==True:
+        if self.draw_with_wcs==True:
              psf_im = psf.drawImage(
                 nx=69, ny=69, wcs=wcs, method='no_pixel').array
 
@@ -74,12 +74,12 @@ class NonGaussPixPSF(object):
             noise_std = np.sqrt(np.sum(psf_im**2)/self.s2n**2)
             psf_im += (rng.normal(size=psf_im.shape) * noise_std)
 
-        if draw_with_wcs==False:
+        if self.draw_with_wcs==False:
             psf = galsim.InterpolatedImage(
                 galsim.ImageD(psf_im),
                 scale=0.125,
                 ).withFlux(1.0)
-        if draw_with_wcs==True:
+        if self.draw_with_wcs==True:
             psf = galsim.InterpolatedImage(
                 galsim.ImageD(psf_im),
                 wcs=wcs,

@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name metacal_{{ tilename }}_seed{{ seed_galsim }}_g{{ plus_or_minus }}
-#SBATCH --partition=kicp
+#SBATCH --partition=kicpaa
 #SBATCH --account=kicp
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=16
+#SBATCH --ntasks-per-node=28
 #SBATCH --cpus-per-task=1
-#SBATCH --time=10:00:00
+#SBATCH --time=12:00:00
 #SBATCH --output=/home/secco/SHEAR/mcal_sim_test/runs/{{ model_name }}/%x.log
 ##SBATCH --mail-user=secco@uchicago.edu
 ##SBATCH --mail-type=BEGIN,END
@@ -29,7 +29,7 @@ tilename="{{ tilename }}"
 NOW=$( date '+%H:%M:%S' )
 echo "Starting galsim stage at $NOW"
  
-python run_sims.py \
+python3 run_sims.py \
   galsim \
   --tilename="$tilename" \
   --bands="$bands" \
@@ -40,7 +40,7 @@ python run_sims.py \
 NOW=$( date '+%H:%M:%S' )
 echo "Done with galsim and starting true-detection at $NOW"
 
-python run_sims.py \
+python3 run_sims.py \
   true-detection \
   --tilename="$tilename" \
   --bands="$bands" \
@@ -50,7 +50,7 @@ python run_sims.py \
 NOW=$( date '+%H:%M:%S' )
 echo "Done with true-detection and starting meds at $NOW"
 
-python run_sims.py \
+python3 run_sims.py \
   meds \
   --tilename="$tilename" \
   --bands="$bands" \
@@ -61,7 +61,7 @@ python run_sims.py \
 NOW=$( date '+%H:%M:%S' )
 echo "Done with meds and starting mcal at $NOW"
 
-python run_sims.py \
+python3 run_sims.py \
   metacal \
   --tilename="$tilename" \
   --bands="$bands" \
@@ -73,4 +73,4 @@ echo "Done with mcal and moving output to $MCAL_DIR/{{ model_name }} at $NOW"
 
 mv "$output/metacal/y3v02/{{ tilename }}_metacal.fits" "$MCAL_DIR/{{ model_name }}/metacal_{{ tilename }}_seed{{ seed_galsim }}_g{{ plus_or_minus }}.fits"
 
-rm -rf $output
+### rm -rf $output

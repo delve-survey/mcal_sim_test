@@ -137,6 +137,12 @@ def _build_psf_data(*, info, psf_kws, output_meds_dir):
             kwargs = {k: psf_kws[k] for k in psf_kws if k != 'type'}
             psf_model = GaussPixPSF(**kwargs)
             return PSFWrapper(psf_model, wcs)
+
+        elif psf_kws['type'] == 'nongauss-pix':
+            from nongauss_pix_psf import NonGaussPixPSF
+            kwargs = {k: psf_kws[k] for k in psf_kws if k != 'type'}
+            psf_model = NonGaussPixPSF(**kwargs)
+            return PSFWrapper(psf_model, wcs)
         
         elif psf_kws['type'] == 'psfex':
             from galsim.des import DES_PSFEx

@@ -8,5 +8,5 @@ rm -r $MEDS_DIR*
 rm -r $PREP_DIR/*
 
 
-rm /{{ current_directory}}/job_*
-rm /{{ current_directory}}/*.log
+rm {{ current_directory}}/job_*
+rm {{ current_directory}}/*.log

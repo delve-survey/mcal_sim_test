@@ -162,7 +162,7 @@ class End2EndSimulation(object):
             psf_model = GaussPixPSF(**kwargs)
             assert self.draw_method == 'auto'
         
-         elif self.psf_kws['type'] == 'nongauss-pix':
+        elif self.psf_kws['type'] == 'nongauss-pix':
             from nongauss_pix_psf import NonGaussPixPSF
             kwargs = {k: self.psf_kws[k] for k in self.psf_kws if k != 'type'}
             psf_model = NonGaussPixPSF(**kwargs)
