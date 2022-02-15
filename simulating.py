@@ -162,6 +162,12 @@ class End2EndSimulation(object):
             psf_model = GaussPixPSF(**kwargs)
             assert self.draw_method == 'auto'
         
+         elif self.psf_kws['type'] == 'nongauss-pix':
+            from nongauss_pix_psf import NonGaussPixPSF
+            kwargs = {k: self.psf_kws[k] for k in self.psf_kws if k != 'type'}
+            psf_model = NonGaussPixPSF(**kwargs)
+            assert self.draw_method == 'auto'
+
         elif self.psf_kws['type'] == 'psfex':
             from galsim.des import DES_PSFEx
             psf_model = DES_PSFEx(expand_path(se_info['psfex_path']), wcs = wcs) #Need to pass wcs when reading file
