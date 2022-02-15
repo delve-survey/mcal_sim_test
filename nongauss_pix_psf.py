@@ -32,6 +32,7 @@ class NonGaussPixPSF(object):
         self.fwhm_frac_std = fwhm_frac_std
         self.s2n = s2n
         self.draw_with_wcs = draw_with_wcs
+        print('\nFrom nongauss_pix_psf/NonGaussPixPSF: draw_with_wcs=',draw_with_wcs,'\n')
 
     def getPSF(self, image_pos, wcs):
         """Get the PSF as an InterpolatedImage
