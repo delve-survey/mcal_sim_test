@@ -45,3 +45,17 @@ Testing metacal measurements on simulated images
     size      N = 359107
     recovered m = 0.198 +/- 0.283 [1e-3, 3-sigma]
     recovered c = -0.251 +/- 0.584 [1e-5, 3-sigma]
+    
+ ### v002_expgal_nongausspixpsf
+ 
+   (with draw_with_wcs=False):
+ 
+    size      N       = 179309
+    recovered (m - 1) = 0.257 +/- 0.657 [1e-3, 3-sigma]
+    recovered c       = 0.186 +/- 1.169 [1e-5, 3-sigma] 
+    
+   (with draw_with_wcs=True):
+   
+    size      N       = 179318
+    recovered (m - 1) = 0.229 +/- 0.725 [1e-3, 3-sigma]
+    recovered c       = 0.008 +/- 1.175 [1e-5, 3-sigma]
