@@ -1,5 +1,6 @@
 import galsim
 import galsim.des
+import pdb
 
 #from ..des_piff import DES_Piff
 from gauss_pix_psf import GaussPixPSF
@@ -151,6 +152,7 @@ class PSFWrapper(object):
                 wcs=wcs, nx=self.n_pix, ny=self.n_pix, method = 'no_pixel').array #Need to use no_pixel because PSF is already convolved with pixel scale
             psf_im2 = psf_at_pos.drawImage(
                  nx=self.n_pix, ny=self.n_pix, method = 'no_pixel').array #Need to use no_pixel because PSF is already convolved with pixel scale
+            pdb.set_trace()
             print('\n')
             print('In psf_wrapper.py line 155: (not sure what to expect) psf_im/psf_im2 = ',psf_im/psf_im2)
             print('\n')
