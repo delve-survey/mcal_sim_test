@@ -1,0 +1,17 @@
+
+allowed_box_sizes: [
+  2, 3, 4, 6, 8, 12, 16, 24, 32, 48,
+  64, 96, 128, 192, 256,
+  384, 512, 768, 1024, 1536,
+  2048, 3072, 4096, 6144]
+
+min_box_size: 32
+max_box_size: 256
+sigma_fac: 5.0
+cutout_types: ['weight', 'seg', 'bmask']
+fpack_pars:
+    FZQVALUE: 4
+    FZTILE: "(10240,1)"
+    FZALGOR: "RICE_1"
+    # preserve zeros, don't dither them
+    FZQMETHD: "SUBTRACTIVE_DITHER_2"
