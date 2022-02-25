@@ -1,6 +1,5 @@
 import galsim
 import galsim.des
-import pdb
 
 #from ..des_piff import DES_Piff
 from gauss_pix_psf import GaussPixPSF
@@ -92,9 +91,9 @@ class PSFWrapper(object):
             return self.psf.getPSF(image_pos, wcs)
         
         elif isinstance(self.psf, DES_PSFEx):
-            print('\n')
-            print('In psf_wrapper.py, image_pos (which should be in pixels on the image, not world coordinates) is ',image_pos)
-            print('\n')
+            #print('\n')
+            #print('In psf_wrapper.py, image_pos (which should be in pixels on the image, not world coordinates) is ',image_pos)
+            #print('\n')
             return self.psf.getPSF(image_pos) #Wrapper doesn't take wcs. Need to pass it when reading file.
         
         elif isinstance(self.psf, DES_PSFEx_Deconv):
@@ -148,14 +147,23 @@ class PSFWrapper(object):
         
         elif isinstance(self.psf, DES_PSFEx):
             psf_at_pos = self.psf.getPSF(im_pos) #No wcs passed here. Need to pass when reading file.
+            #psf_im = psf_at_pos.drawImage(
+             #   wcs=wcs, nx=self.n_pix, ny=self.n_pix, method = 'no_pixel').array #Need to use no_pixel because PSF is already convolved with pixel scale
             psf_im = psf_at_pos.drawImage(
-                wcs=wcs, nx=self.n_pix, ny=self.n_pix, method = 'no_pixel').array #Need to use no_pixel because PSF is already convolved with pixel scale
-            psf_im2 = psf_at_pos.drawImage(
-                 nx=self.n_pix, ny=self.n_pix, method = 'no_pixel').array #Need to use no_pixel because PSF is already convolved with pixel scale
-            pdb.set_trace()
-            print('\n')
-            print('In psf_wrapper.py line 155: (not sure what to expect) psf_im/psf_im2 = ',psf_im/psf_im2)
-            print('\n')
+                 nx=self.n_pix, ny=self.n_pix, method = 'no_pixel').array #explicitly removed the wcs when drawing the image as a test, the idea being that the DES_PSFex already gets the PSF with the right WCS
+            #pdb.set_trace()
+            #print('Asserting sizes')
+            #assert psf_im.shape == psf_im2.shape
+            #nonzero = np.where(psf_im!=0)[0]
+            #nansin1 = np.isnan(psf_im).sum()
+            #nansin2 = np.isnan(psf_im2).sum()
+            #print('nans in 1: ',nansin1,' nansin2: ',nansin2)
+            #print('In psf_wrapper.py line 155: (not sure what to expect) psf_im=',psf_im[nonzero])
+            #print('psf_im2 = ',psf_im2[nonzero])
+            #np.save('psf_im.npy',psf_im)
+            #np.save('psf_im2.npy',psf_im2)
+            #print('\n')
+            #pdb.set_trace()
 
         elif isinstance(self.psf, DES_PSFEx_Deconv):
             psf_at_pos = self.psf.getPSF(im_pos) #No wcs passed here. Need to pass when reading file.

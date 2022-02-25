@@ -44,13 +44,13 @@ def get_galsim_wcs(*, image_path, image_ext):
     """
     hd = fitsio.read_header(
         image_path, ext=image_ext)
-    print('\n')
-    print('In wcsing.py, line 48:\n image path is ',image_path,'\n and image_ext is ',image_ext)
-    print('\n')
+    #print('\n')
+    #print('In wcsing.py, line 48:\n image path is ',image_path,'\n and image_ext is ',image_ext)
+    #print('\n')
     hd = {k.upper(): hd[k] for k in hd if k is not None}
-    print('hd is ',hd)
+    #print('hd is ',hd)
     wcs = galsim.FitsWCS(header=hd)
-    print('wcs is ',wcs)
-    print('galsim.PixelScale is ',galsim.PixelScale)
+    #print('wcs is ',wcs)
+    #print('galsim.PixelScale is ',galsim.PixelScale)
     assert not isinstance(wcs, galsim.PixelScale)  # this has been a problem
     return wcs
