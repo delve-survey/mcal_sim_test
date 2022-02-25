@@ -91,6 +91,9 @@ class PSFWrapper(object):
             return self.psf.getPSF(image_pos, wcs)
         
         elif isinstance(self.psf, DES_PSFEx):
+            print('\n')
+            print('In psf_wrapper.py, image_pos (which should be in pixels on the image, not world coordinates) is ',image_pos)
+            print('\n')
             return self.psf.getPSF(image_pos) #Wrapper doesn't take wcs. Need to pass it when reading file.
         
         elif isinstance(self.psf, DES_PSFEx_Deconv):
@@ -146,7 +149,12 @@ class PSFWrapper(object):
             psf_at_pos = self.psf.getPSF(im_pos) #No wcs passed here. Need to pass when reading file.
             psf_im = psf_at_pos.drawImage(
                 wcs=wcs, nx=self.n_pix, ny=self.n_pix, method = 'no_pixel').array #Need to use no_pixel because PSF is already convolved with pixel scale
-        
+            psf_im2 = psf_at_pos.drawImage(
+                 nx=self.n_pix, ny=self.n_pix, method = 'no_pixel').array #Need to use no_pixel because PSF is already convolved with pixel scale
+            print('\n')
+            print('In psf_wrapper.py line 155: (not sure what to expect) psf_im/psf_im2 = ',psf_im/psf_im2)
+            print('\n')
+
         elif isinstance(self.psf, DES_PSFEx_Deconv):
             psf_at_pos = self.psf.getPSF(im_pos) #No wcs passed here. Need to pass when reading file.
             psf_im = psf_at_pos.drawImage(

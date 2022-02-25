@@ -2,11 +2,8 @@ import os
 import jinja2
 import yaml
 
-tilenames = [ 'DES2134-0124',                                                                                                                                    'DES2134+0126']
-#'DES2122-0124',
-#    'DES2122+0126',
-#    'DES2122-0207']
-#    'DES0544-2249',
+tilenames = [ 'DES2134-0124','DES2134+0126'] 
+# 'DES0544-2249',
 #    'DES2122+0001',
 #    'DES2122-0041',
 #    'DES2122+0043']
@@ -49,48 +46,48 @@ tilenames = [ 'DES2134-0124',                                                   
 # 'DES2137+0126',
 # 'DES2137+0209']
 
+if __name__ == '__main__':
+    #Automatically get folder name (assuming certain folder structure)
+    name = os.path.basename(os.path.dirname(__file__))
 
-#Automatically get folder name (assuming certain folder structure)
-name = os.path.basename(os.getcwd())
-
-#Create output directory for metacal
-MCAL_DIR = os.environ['MCAL_DIR']
-os.makedirs(MCAL_DIR +'/'+ name, exist_ok=True)
-
-
-
-#Create the config file
-with open('config.yaml.temp', 'r') as fp:
-    tmp = jinja2.Template(fp.read())
-
-
-for g_sign, g_multiplier in zip(['plus', 'minus'], [1, -1]): 
-    with open('config_%s.yaml'%g_sign, 'w') as fp:
-        fp.write(tmp.render(g1 = 0.02*g_multiplier))
+    #Create output directory for metacal
+    MCAL_DIR = os.environ['MCAL_DIR']
+    os.makedirs(MCAL_DIR +'/'+ name, exist_ok=True)
 
 
 
-#Create clean_dirs command for easy use
-with open('clean_dirs.sh.temp', 'r') as fp:
-    tmp = jinja2.Template(fp.read())
-
-with open('clean_dirs.sh', 'w') as fp:
-    fp.write(tmp.render(current_directory = os.getcwd()))
+    #Create the config file
+    with open('config.yaml.temp', 'r') as fp:
+        tmp = jinja2.Template(fp.read())
 
 
+    for g_sign, g_multiplier in zip(['plus', 'minus'], [1, -1]): 
+        with open('config_%s.yaml'%g_sign, 'w') as fp:
+            fp.write(tmp.render(g1 = 0.02*g_multiplier))
 
-#Now create all job.sh files for running sims
-with open('job.sh.temp', 'r') as fp:
-    tmp = jinja2.Template(fp.read())
 
-for i, tilename in enumerate(tilenames):
-    gal_seed = 0
-    os.system('python $RUN_DIR/run_sims.py prep --tilename="%s" --bands="riz" --output-desdata="$PREP_DIR/outputs_%s_seed%d_gplus"'%(tilename, tilename, gal_seed))
-    os.system('cp -r $PREP_DIR/outputs_%s_seed%d_gplus $PREP_DIR/outputs_%s_seed%d_gminus'%(tilename, gal_seed, tilename, gal_seed))
+
+    #Create clean_dirs command for easy use
+    with open('clean_dirs.sh.temp', 'r') as fp:
+        tmp = jinja2.Template(fp.read())
+
+    with open('clean_dirs.sh', 'w') as fp:
+        fp.write(tmp.render(current_directory = os.getcwd()))
+
+
+
+    #Now create all job.sh files for running sims
+    with open('job.sh.temp', 'r') as fp:
+        tmp = jinja2.Template(fp.read())
+
+    for i, tilename in enumerate(tilenames):
+        gal_seed = 0
+        os.system('python $RUN_DIR/run_sims.py prep --tilename="%s" --bands="riz" --output-desdata="$PREP_DIR/outputs_%s_seed%d_gplus"'%(tilename, tilename, gal_seed))
+        os.system('cp -r $PREP_DIR/outputs_%s_seed%d_gplus $PREP_DIR/outputs_%s_seed%d_gminus'%(tilename, gal_seed, tilename, gal_seed))
     
-    with open('job_%s_plus.sh' % tilename, 'w') as fp:
-        fp.write(tmp.render(tilename=tilename, model_name = name, plus_or_minus = "plus", seed_galsim=gal_seed, seed_mcal=42))
-    with open('job_%s_minus.sh' % tilename, 'w') as fp:
-        fp.write(tmp.render(tilename=tilename, model_name = name, plus_or_minus = "minus", seed_galsim=gal_seed, seed_mcal=42))
-    os.system('chmod u+x job_%s_plus.sh' % tilename)
-    os.system('chmod u+x job_%s_minus.sh' % tilename)
+        with open('job_%s_plus.sh' % tilename, 'w') as fp:
+            fp.write(tmp.render(tilename=tilename, model_name = name, plus_or_minus = "plus", seed_galsim=gal_seed, seed_mcal=42))
+        with open('job_%s_minus.sh' % tilename, 'w') as fp:
+            fp.write(tmp.render(tilename=tilename, model_name = name, plus_or_minus = "minus", seed_galsim=gal_seed, seed_mcal=42))
+        os.system('chmod u+x job_%s_plus.sh' % tilename)
+        os.system('chmod u+x job_%s_minus.sh' % tilename)

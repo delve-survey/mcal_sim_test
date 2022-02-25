@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name metacal_{{ tilename }}_seed{{ seed_galsim }}_g{{ plus_or_minus }}
 #SBATCH --partition=kicpaa
-#SBATCH --account=kicp
+#SBATCH --account=kicpaa
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=28
 #SBATCH --cpus-per-task=1
