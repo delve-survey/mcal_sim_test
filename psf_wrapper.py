@@ -91,6 +91,7 @@ class PSFWrapper(object):
             return self.psf.getPSF(image_pos, wcs)
         
         elif isinstance(self.psf, DES_PSFEx):
+            image_pos = galsim.PositionD(x=int(image_pos.x+0.5), y=int(image_pos.y+0.5))
             #print('\n')
             #print('In psf_wrapper.py, image_pos (which should be in pixels on the image, not world coordinates) is ',image_pos)
             #print('\n')
@@ -146,11 +147,11 @@ class PSFWrapper(object):
                 wcs=wcs, nx=self.n_pix, ny=self.n_pix).array
         
         elif isinstance(self.psf, DES_PSFEx):
+            im_pos = galsim.PositionD(x=int(im_pos.x+0.5), y=int(im_pos.y+0.5))
             psf_at_pos = self.psf.getPSF(im_pos) #No wcs passed here. Need to pass when reading file.
+            psf_im = psf_at_pos.drawImage(wcs=wcs, nx=self.n_pix, ny=self.n_pix, method = 'no_pixel').array #Need to use no_pixel because PSF is already convolved with pixel scale
             #psf_im = psf_at_pos.drawImage(
-             #   wcs=wcs, nx=self.n_pix, ny=self.n_pix, method = 'no_pixel').array #Need to use no_pixel because PSF is already convolved with pixel scale
-            psf_im = psf_at_pos.drawImage(
-                 nx=self.n_pix, ny=self.n_pix, method = 'no_pixel').array #explicitly removed the wcs when drawing the image as a test, the idea being that the DES_PSFex already gets the PSF with the right WCS
+            #     nx=self.n_pix, ny=self.n_pix, method = 'no_pixel').array #explicitly removed the wcs when drawing the image as a test, the idea being that the DES_PSFex already gets the PSF with the right WCS
             #pdb.set_trace()
             #print('Asserting sizes')
             #assert psf_im.shape == psf_im2.shape
