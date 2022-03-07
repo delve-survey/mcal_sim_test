@@ -107,7 +107,7 @@ def make_meds_files(*, tilename, bands, output_meds_dir, psf_kws, meds_config):
 
                 # make sure to remove the destination file when fpacking
                 ### begin Lucas:
-                print('\nWill not fpack file %s'%uncompressed_file)
+                print('\nLucas: Will not fpack file %s'%uncompressed_file)
                 ### uncomment all below when test is finished:
                 #try:
                 #    os.remove(sf.path)
