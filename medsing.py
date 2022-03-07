@@ -84,6 +84,12 @@ def make_meds_files(*, tilename, bands, output_meds_dir, psf_kws, meds_config):
             psf_kws=psf_kws,
             output_meds_dir=output_meds_dir)
 
+        #begin Lucas:
+        print('\nLucas: PSF data is ',psf_data)
+        print('Lucas: will try to save it as a numpy array in the hopes that this is what psf_data is')
+        np.save('/home/secco/SHEAR/mcal_sim_test/runs/v003_expgal_psfex/psf_out_before_medsfile/test_psf.npy',psf_data)
+        #end Lucas
+        
         # make the file in a tmp dir and then stage out
         maker = MEDSMaker(
             obj_data,
@@ -106,19 +112,20 @@ def make_meds_files(*, tilename, bands, output_meds_dir, psf_kws, meds_config):
                 maker.write(uncompressed_file)
 
                 # make sure to remove the destination file when fpacking
-                ### begin Lucas:
+                try:
+                    os.remove(sf.path)
+                except Exception:
+                    pass
+                # begin Lucas:
                 print('\nLucas: Will not fpack file %s'%uncompressed_file)
-                ### uncomment all below when test is finished:
-                #try:
-                #    os.remove(sf.path)
-                #except Exception:
-                #    pass
-                #desmeds.util.fpack_file(uncompressed_file)
-                #try:
-                #    os.remove(uncompressed_file)
-                #except Exception:
-                #    pass
-                ### end Lucas
+                print('\nLucas: moving to /home/secco/project2-kicp-secco/delve/saved_outputs/v003_expgal_psfex/uncompressed_test_March7/')
+                os.system('cp %s /home/secco/project2-kicp-secco/delve/saved_outputs/v003_expgal_psfex/uncompressed_test_March7/')
+                desmeds.util.fpack_file(uncompressed_file)
+                try:
+                    os.remove(uncompressed_file)
+                except Exception:
+                    pass
+                ## end Lucas
 
 def _build_psf_data(*, info, psf_kws, output_meds_dir):
     def _load_psf_data(_info, force_gauss=False):
@@ -166,11 +173,6 @@ def _build_psf_data(*, info, psf_kws, output_meds_dir):
         #print(se_info.keys())
         psf_data.append(_load_psf_data(se_info))
     return psf_data
-    #begin Lucas:
-    print('\nLucas: PSF data is ',psf_data)
-    print('Lucas: will try to save it as a numpy array in the hopes that this is what psf_data is')
-    np.save('/home/secco/SHEAR/mcal_sim_test/runs/v003_expgal_psfex/psf_out_before_medsfile/test_psf.npy',psf_data)
-    #end Lucas
 
 def _make_meds_metadata(*, band, tilename):
     meta = np.zeros(1, dtype=[
