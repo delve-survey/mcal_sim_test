@@ -119,8 +119,9 @@ def make_meds_files(*, tilename, bands, output_meds_dir, psf_kws, meds_config):
                     pass
                 # begin Lucas:
                 print('\nLucas: Will not fpack file %s'%uncompressed_file)
+                newname = uncompressed_file[:-5]+str(np.random.randint(500))+'.fits'
                 print('\nLucas: moving to /home/secco/project2-kicp-secco/delve/saved_outputs/v003_expgal_psfex/uncompressed_test_March7/')
-                os.system('cp %s /home/secco/project2-kicp-secco/delve/saved_outputs/v003_expgal_psfex/uncompressed_test_March7/'%uncompressed_file)
+                os.system('cp %s /home/secco/project2-kicp-secco/delve/saved_outputs/v003_expgal_psfex/uncompressed_test_March7/'%newname)
                 desmeds.util.fpack_file(uncompressed_file)
                 try:
                     os.remove(uncompressed_file)

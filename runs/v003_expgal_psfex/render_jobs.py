@@ -2,7 +2,7 @@ import os
 import jinja2
 import yaml
 
-tilenames = [ 'DES2134-0124','DES2134+0126'] 
+tilenames = [ 'DES2134-0124']#,'DES2134+0126'] 
 # 'DES0544-2249',
 #    'DES2122+0001',
 #    'DES2122-0041',
