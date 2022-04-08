@@ -177,6 +177,11 @@ class End2EndSimulation(object):
             from des_psfex import DES_PSFEx_Deconv
             psf_model = DES_PSFEx_Deconv(expand_path(se_info['psfex_path']), wcs = wcs) #Need to pass wcs when reading file
             assert self.draw_method == 'auto' #Don't need no_pixel since psf already deconvolved
+            
+        elif self.psf_kws['type'] == 'psfex_deconvolved_V2':
+            from psfex_deconvolved import PSFEx_Deconv
+            psf_model = PSFEx_Deconv(expand_path(se_info['psfex_path']), wcs = wcs) #Need to pass wcs when reading file
+            assert self.draw_method == 'auto' #Don't need no_pixel since psf already deconvolved
         
         else:
             raise ValueError(
