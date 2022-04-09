@@ -149,13 +149,13 @@ def _build_psf_data(*, info, psf_kws, output_meds_dir):
             psfex_model = DES_PSFEx(expand_path(_info['psfex_path']), wcs = wcs)
             return PSFWrapper(psfex_model, wcs)
         
-        elif psf_kws['type'] == 'psfex_deconvolved':
+        elif psf_kws['type'] == 'des_psfex':
             from des_psfex import DES_PSFEx_Deconv
             psfex_model = DES_PSFEx_Deconv(expand_path(_info['psfex_path']), wcs = wcs)
             return PSFWrapper(psfex_model, wcs)
         
         
-        elif psf_kws['type'] == 'psfex_deconvolved_V2':
+        elif psf_kws['type'] == 'psfex_deconvolved':
             from psfex_deconvolved import PSFEx_Deconv
             psfex_model = PSFEx_Deconv(expand_path(_info['psfex_path']), wcs = wcs)
             return PSFWrapper(psfex_model, wcs)
@@ -163,7 +163,7 @@ def _build_psf_data(*, info, psf_kws, output_meds_dir):
         else:
             raise ValueError("psf type '%s' is not valid!" % psf_kws['type'])
 
-    force_gauss = psf_kws['type'] in ['psfex', 'psfex_deconvolved', 'psfex_deconvolved_V2', 'piff']
+    force_gauss = psf_kws['type'] in ['psfex', 'psfex_deconvolved', 'des_psfex', 'piff']
     psf_data = [_load_psf_data(info, force_gauss=force_gauss)] #QUESTION FOR MATT: Do we force gaussian because we don't care about coadd image?
     for se_info in info['src_info']:
         #print(se_info.keys())

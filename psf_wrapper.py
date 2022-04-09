@@ -95,10 +95,12 @@ class PSFWrapper(object):
             return self.psf.getPSF(image_pos) #Wrapper doesn't take wcs. Need to pass it when reading file.
         
         elif isinstance(self.psf, DES_PSFEx_Deconv):
-            return self.psf.getPSF(image_pos)
+            wcs = self.wcs.local(image_pos)
+            return self.psf.getPSF(image_pos, wcs)
         
         elif isinstance(self.psf, PSFEx_Deconv):
-            return self.psf.getPSF(image_pos)
+            wcs = self.wcs.local(image_pos)
+            return self.psf.getPSF(image_pos, wcs)
         
         else:
             raise ValueError(

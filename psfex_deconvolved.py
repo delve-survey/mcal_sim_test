@@ -47,30 +47,12 @@ class PSFEx_Deconv(object):
         x_interpolant='lanczos15'
         gsparams=None
         
-        scale = 0.25
-        pixel_wcs = galsim.PixelScale(scale)
+        psf = self.getPSFEx().getPSF(image_pos) #Get galsim PSF object
+        
+        pixel_scale = np.sqrt(wcs.pixelArea(image_pos)) #Maximum size of pixel in arcsec. Is basically scale=0.263 arcsec
 
-        # nice and big image size here cause this has been a problem
-#         image = galsim.ImageD(ncol=19, nrow=19, wcs=pixel_wcs)
-
-#         psf = self.getPSFEx().getPSF(image_pos).drawImage(
-#             #center=image_pos, #Dhayaa: Not using center here to drae image. PSF is already obtained at image_pos.
-#             image=image,
-#             offset=(0, 0)) #explicitly setting to zero because we don't need offset
-
-#         psf = galsim.InterpolatedImage(
-#             galsim.ImageD(psf.array),  # make sure galsim is not keeping state
-#             wcs=pixel_wcs,
-#             gsparams=gsparams,
-#             x_interpolant=x_interpolant
-#         )
-
-        psf = self.getPSFEx().getPSF(image_pos)
-
-        psf = galsim.Convolve(
-            [psf, galsim.Deconvolve(galsim.Pixel(scale))]
-        ).withFlux(
-            1.0
-        )
+        deconvolution_kernel = galsim.Deconvolve(galsim.Pixel(pixel_scale)) #Create kernel to deconvolve pixel window
+        
+        psf = galsim.Convolve([psf, deconvolution_kernel]).withFlux(1.0) #Deconvolve
 
         return psf
