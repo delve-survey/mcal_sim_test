@@ -4,11 +4,11 @@
 ##SBATCH --partition=chihway
 #SBATCH --account=pi-chihway
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=28
+#SBATCH --ntasks-per-node=20
 ##SBATCH --ntasks-per-node=40
 #SBATCH --time=10:00:00
-#SBATCH --output=$RUN_DIR/runs/{{ model_name }}/%x.log
-#SBATCH --mail-user=$EMAIL_ID
+#SBATCH --output=/home/dhayaa/Desktop/DECADE/mcal_sim_test/runs/{{ model_name }}/%x.log
+#SBATCH --mail-user=dhayaa@uchicago.edu
 #SBATCH --mail-type=BEGIN,END
 
 
@@ -27,7 +27,7 @@ then
 fi
 
 
-output="$PREP_DIR/outputs_{{ tilename }}_seed{{ seed_galsim }}_g{{ plus_or_minus }}"
+output="$PREP_DIR/{{ model_name }}/outputs_{{ tilename }}_seed{{ seed_galsim }}_g{{ plus_or_minus }}"
 bands="riz"
 tilename="{{ tilename }}"
 
@@ -81,8 +81,12 @@ python run_sims.py \
   --seed="{{ seed_mcal }}"
 
 NOW=$( date '+%H:%M:%S' )
-echo "Completed mcal and moving output to $MCAL_DIR/{{ model_name }} at $NOW"
+echo "Completed mcal and moving meds + mcal output to $MCAL_DIR/{{ model_name }} at $NOW"
 
 mv "$output/metacal/y3v02/{{ tilename }}_metacal.fits" "/project2/chihway/dhayaa/DECADE/Tests/{{ model_name }}/metacal_{{ tilename }}_seed{{ seed_galsim }}_g{{ plus_or_minus }}.fits"
 
-#rm -rf $output
+mv "$output/meds/y3v02/{{ tilename }}/{{ tilename }}_r_meds-y3v02.fits.fz" "$MCAL_DIR/{{ model_name }}/meds_{{ tilename }}_g{{ plus_or_minus }}_r-y3v02.fits.fz"
+mv "$output/meds/y3v02/{{ tilename }}/{{ tilename }}_i_meds-y3v02.fits.fz" "$MCAL_DIR/{{ model_name }}/meds_{{ tilename }}_g{{ plus_or_minus }}_i-y3v02.fits.fz"
+mv "$output/meds/y3v02/{{ tilename }}/{{ tilename }}_z_meds-y3v02.fits.fz" "$MCAL_DIR/{{ model_name }}/meds_{{ tilename }}_g{{ plus_or_minus }}_z-y3v02.fits.fz"
+
+rm -rf $output

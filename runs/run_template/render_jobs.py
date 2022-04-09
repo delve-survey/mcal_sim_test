@@ -6,18 +6,18 @@ tilenames = [
     'DES0544-2249',
     'DES2122+0001',
     'DES2122-0041',
-    'DES2122+0043']
-#    'DES2122-0124',
-#    'DES2122+0126',
-#    'DES2122-0207',
-#    'DES2122+0209',
-#    'DES2125+0001',
-#    'DES2125-0041',
-#    'DES2125+0043',
-#    'DES2125-0124',
-#    'DES2125+0126',
-#    'DES2125-0207',
-#    'DES2125+0209']
+    'DES2122+0043',
+    'DES2122-0124',
+    'DES2122+0126',
+    'DES2122-0207',
+    'DES2122+0209',
+    'DES2125+0001',
+    'DES2125-0041',
+    'DES2125+0043',
+    'DES2125-0124',
+    'DES2125+0126',
+    'DES2125-0207',
+    'DES2125+0209']
 # 'DES2128+0001',
 # 'DES2128-0041',
 # 'DES2128+0043',
@@ -82,8 +82,8 @@ if __name__ == '__main__':
 
     for i, tilename in enumerate(tilenames):
         gal_seed = 0
-        os.system('python $RUN_DIR/run_sims.py prep --tilename="%s" --bands="riz" --output-desdata="$PREP_DIR/outputs_%s_seed%d_gplus"'%(tilename, tilename, gal_seed))
-        os.system('cp -r $PREP_DIR/outputs_%s_seed%d_gplus $PREP_DIR/outputs_%s_seed%d_gminus'%(tilename, gal_seed, tilename, gal_seed))
+        os.system('python $RUN_DIR/run_sims.py prep --tilename="%s" --bands="riz" --output-desdata="$PREP_DIR/%s/outputs_%s_seed%d_gplus"'%(tilename, name, tilename, gal_seed))
+        os.system('cp -r $PREP_DIR/%s/outputs_%s_seed%d_gplus $PREP_DIR/%s/outputs_%s_seed%d_gminus'%(name, tilename, gal_seed, name, tilename, gal_seed))
     
         with open('job_%s_plus.sh' % tilename, 'w') as fp:
             fp.write(tmp.render(tilename=tilename, model_name = name, plus_or_minus = "plus", seed_galsim=gal_seed, seed_mcal=42))
