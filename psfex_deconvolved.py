@@ -49,9 +49,10 @@ class PSFEx_Deconv(object):
         
         psf = self.getPSFEx().getPSF(image_pos) #Get galsim PSF object
         
-        pixel_scale = np.sqrt(wcs.pixelArea(image_pos)) #Maximum size of pixel in arcsec. Is basically scale=0.263 arcsec
+        wcs = wcs.jacobian(image_pos=image_pos)
+        pixel = wcs.toWorld(galsim.Pixel(scale=1)) #Get pixel profile in correct wcs
 
-        deconvolution_kernel = galsim.Deconvolve(galsim.Pixel(pixel_scale)) #Create kernel to deconvolve pixel window
+        deconvolution_kernel = galsim.Deconvolve(pixel) #Create kernel to deconvolve pixel window
         
         psf = galsim.Convolve([psf, deconvolution_kernel]).withFlux(1.0) #Deconvolve
 

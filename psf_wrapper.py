@@ -159,7 +159,7 @@ class PSFWrapper(object):
                 wcs=wcs, nx=self.n_pix, ny=self.n_pix).array 
             
         elif isinstance(self.psf, PSFEx_Deconv):
-            psf_at_pos = self.psf.getPSF(im_pos) #No wcs passed here. Need to pass when reading file.
+            psf_at_pos = self.psf.getPSF(im_pos, self.wcs) #Need to pass wcs here in order to get local jacobian and transform pixel scale
             psf_im = psf_at_pos.drawImage(
                 wcs=wcs, nx=self.n_pix, ny=self.n_pix).array 
         
