@@ -21,6 +21,7 @@ from sky_bounding import get_rough_sky_bounds, radec_to_uv
 from wcsing import get_esutil_wcs, get_galsim_wcs
 from galsiming import render_sources_for_image
 from psf_wrapper import PSFWrapper
+from realistic_galaxying import init_descwl_catalog, get_descwl_galaxy
 
 logger = logging.getLogger(__name__)
 
@@ -78,13 +79,17 @@ class End2EndSimulation(object):
         else:
             self.draw_method = 'auto'
 
-        # make the RNGS
-        # one for galaxies in the truth catalog
+        # make the RNGS. Extra initial seeds in case we need even more multiple random generators in future
+        seeds = np.random.RandomState(seed=seed).randint(low=1, high=2**30, size=10)
+        
+        # one for galaxies (dither) in the truth catalog
         # one for noise in the images
-        seeds = np.random.RandomState(seed=seed).randint(
-            low=1, high=2**30, size=2)
-        self.gal_rng = np.random.RandomState(seed=seeds[0])
+        self.galdither_rng = np.random.RandomState(seed=seeds[0])
         self.noise_rng = np.random.RandomState(seed=seeds[1])
+        
+        #one for drawing random galaxies from descwl package
+        self.galsource_rng = np.random.RandomState(seed=seeds[2])
+        
 
         # load the image info for each band
         self.info = {}
@@ -117,6 +122,21 @@ class End2EndSimulation(object):
         noise_seeds = self.noise_rng.randint(
             low=1, high=2**30, size=len(self.info[band]['src_info']))
 
+        
+        if self.gal_kws['gal_source'] == 'simple':
+            simulated_catalog = None
+            
+        elif self.gal_kws['gal_source'] == 'descwl':
+            simulated_catalog = init_descwl_catalog(survey_bands = "des-riz")
+            
+            #Temporarily set to zero just to ensure all galaxies have same direction
+#             simulated_catalog.cat['pa_disk'][:] = 0
+#             simulated_catalog.cat['pa_bulge'][:] = 0
+#             simulated_catalog.cat['a_d'] = self.galsource_rng.uniform(0.4, 0.8, len(simulated_catalog.cat['a_d'])) #0.2
+#             simulated_catalog.cat['b_d'] = simulated_catalog.cat['a_d'] #0.2
+#             simulated_catalog.cat['a_b'] = 0.05
+#             simulated_catalog.cat['b_b'] = 0.05
+        
         jobs = []
         for noise_seed, se_info in zip(
                 noise_seeds, self.info[band]['src_info']):
@@ -128,7 +148,11 @@ class End2EndSimulation(object):
                     image_ext=se_info['image_ext']),
                 psf=self._make_psf_wrapper(se_info=se_info),
                 g1=self.gal_kws['g1'],
-                g2=self.gal_kws['g2'])
+                g2=self.gal_kws['g2'],
+                gal_mag = self.gal_kws['gal_mag'],
+                gal_source = self.gal_kws['gal_source'],
+                galsource_rng = self.galsource_rng,
+                simulated_catalog = simulated_catalog)
 
             jobs.append(joblib.delayed(_render_se_image)(
                 se_info=se_info,
@@ -200,17 +224,19 @@ class End2EndSimulation(object):
             image_ext=self.info[band]['image_ext'])
 
         ra, dec, x, y = make_coadd_grid_radec(
-            rng=self.gal_rng, coadd_wcs=coadd_wcs,
+            rng=self.galdither_rng, coadd_wcs=coadd_wcs,
             return_xy=True, n_grid=self.gal_kws['n_grid'])
 
         truth_cat = np.zeros(
             len(ra), dtype=[
                 ('number', 'i8'),
+                ('descwl_ind', 'i8'),
                 ('ra', 'f8'),
                 ('dec', 'f8'),
                 ('x', 'f8'),
                 ('y', 'f8')])
         truth_cat['number'] = np.arange(len(ra)).astype(np.int64) + 1
+        truth_cat['descwl_ind'] = self.galsource_rng.randint(low=1, high=300_000, size=len(ra))
         truth_cat['ra'] = ra
         truth_cat['dec'] = dec
         truth_cat['x'] = x
@@ -321,7 +347,7 @@ def _render_all_objects(
         draw_method=draw_method,
         src_inds=msk_inds,
         src_func=src_func,
-        n_jobs=10)
+        n_jobs=1)
 
     return im.array
 
@@ -410,18 +436,39 @@ class LazySourceCat(object):
         Returns the object to be rendered from the truth catalog at
         index `ind`.
     """
-    def __init__(self, *, truth_cat, wcs, psf, g1, g2):
+    def __init__(self, *, truth_cat, wcs, psf, g1, g2, gal_mag, gal_source, galsource_rng = None, simulated_catalog = None):
         self.truth_cat = truth_cat
         self.wcs = wcs
         self.psf = psf
         self.g1 = g1
         self.g2 = g2
+        
+        self.gal_source = gal_source
+        self.galsource_rng = galsource_rng
+        
+        self.simulated_catalog = simulated_catalog
+        
+        self.gal_mag = gal_mag
+        
+            
 
     def __call__(self, ind):
         pos = self.wcs.toImage(galsim.CelestialCoord(
             ra=self.truth_cat['ra'][ind] * galsim.degrees,
             dec=self.truth_cat['dec'][ind] * galsim.degrees))
-        obj = galsim.Exponential(half_light_radius=0.5).withFlux(64000)
+        
+        normalized_flux = 10**((30 - self.gal_mag)/2.5)
+        
+        if self.gal_source == 'simple':
+            obj = galsim.Exponential(half_light_radius=0.5).withFlux(normalized_flux)
+            
+        elif self.gal_source == 'descwl':
+            obj = get_descwl_galaxy(descwl_ind = self.truth_cat['descwl_ind'][ind],
+                                    rng = self.galsource_rng, 
+                                    data = self.simulated_catalog).withFlux(normalized_flux)
+#             print("I FINISHED PULLING!!!!!!!!!")
+        
         obj = obj.shear(g1=self.g1, g2=self.g2)
         psf = self.psf.getPSF(image_pos=pos)
+        
         return galsim.Convolve([obj, psf]), pos
