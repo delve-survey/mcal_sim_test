@@ -13,6 +13,8 @@ NGMIX_V1=False #wild guess here
 from files import get_meds_file_path, get_mcal_file_path, make_dirs_for_file
 from metacal.metacal_fitter import MetacalFitter
 from constants import MEDSCONF, MAGZP_REF
+from interpolate import interpolate_image_at_mask
+import galsim
 
 logger = logging.getLogger(__name__)
 
@@ -184,9 +186,11 @@ def _run_mcal_one_chunk(meds_files, start, end, seed):
 
         for ind in range(start, end):
             o = mbmeds.get_mbobs(ind)
-            o = _strip_coadd(o)
-            o = _strip_zero_flux(o)
-            o = _apply_pixel_scale(o)
+            
+            o = _strip_coadd(o) #Remove coadd since it isnt used in fitting
+            o = _strip_zero_flux(o) #Remove any obs with zero flux
+            o = _fill_empty_pix(o) #Interpolate empty pixels (and remove img where we cant do it properly)
+            o = _apply_pixel_scale(o) #Get right flux scale
 
             skip_me = False
             for ol in o:
@@ -258,3 +262,51 @@ def _apply_pixel_scale(mbobs):
             o.image = o.image / scale2
             o.weight = o.weight * scale4
     return mbobs
+
+
+def _fill_empty_pix(mbobs):
+    _mbobs = MultiBandObsList()
+    _mbobs.update_meta_data(mbobs.meta)
+    
+    gauss = galsim.Gaussian(fwhm = 1.2) #Fixed aperture gauss weights for image
+    
+    #Loop over different band observations (r, i, z)
+    for ol in mbobs:
+        _ol = ObsList()
+        _ol.update_meta_data(ol.meta)
+        
+        #Loop over different exposures/cutouts in each band
+        for i in range(len(ol)):
+            
+            msk = ol[i].bmask.astype(bool) #Mask where TRUE means bad pixel
+            wgt = np.median(ol[i].weight) #Median weight used to populate noise in empty pix
+            
+            wcs       = ol[i].jacobian.get_galsim_wcs() #get wcs of this observations
+            gauss_wgt = gauss.drawImage(nx = msk.shape[0], ny = msk.shape[1], wcs = wcs).array #Create gaussian weights image (as array)
+            
+            good_frac = np.average(np.invert(msk).astype(int), weights = gauss_wgt) #Fraction of missing values
+            
+            #if weighted frac of good pixs is low, then skip observation
+            if good_frac < 0.9:
+                continue
+            
+            #Interpolate image to fill in gaps
+            im    = interpolate_image_at_mask(image=ol[i].image, weight=wgt, bad_msk=msk, 
+                                              rng=rng, maxfrac=0.9, buff=4,
+                                              fill_isolated_with_noise=True)
+                                                       
+            noise = interpolate_image_at_mask(image=ol[i].noise, weight=wgt, bad_msk=msk, 
+                                              rng=rng, maxfrac=0.9, buff=4,
+                                              fill_isolated_with_noise=True)
+            
+            ol[i].image = im
+            ol[i].noise = noise
+            
+            #If we can't interpolate image or noise due to lack of data
+            #then we skip this observation (it is stripped from MultiBandObs list)
+            if (im is None) | (noise is None):
+                continue
+            
+            _ol.append(ol[i])
+        _mbobs.append(_ol)
+    return _mbobs
