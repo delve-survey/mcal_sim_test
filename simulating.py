@@ -465,8 +465,7 @@ class LazySourceCat(object):
         elif self.gal_source == 'descwl':
             obj = get_descwl_galaxy(descwl_ind = self.truth_cat['descwl_ind'][ind],
                                     rng = self.galsource_rng, 
-                                    data = self.simulated_catalog).withFlux(normalized_flux)
-#             print("I FINISHED PULLING!!!!!!!!!")
+                                    data = self.simulated_catalog)#.withFlux(normalized_flux)
         
         obj = obj.shear(g1=self.g1, g2=self.g2)
         psf = self.psf.getPSF(image_pos=pos)
