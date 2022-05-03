@@ -13,7 +13,7 @@ NGMIX_V1=False #wild guess here
 from files import get_meds_file_path, get_mcal_file_path, make_dirs_for_file
 from metacal.metacal_fitter import MetacalFitter
 from constants import MEDSCONF, MAGZP_REF
-from interpolate import interpolate_image_at_mask
+from metacal.interpolate import interpolate_image_at_mask
 import galsim
 
 logger = logging.getLogger(__name__)
@@ -190,7 +190,7 @@ def _run_mcal_one_chunk(meds_files, start, end, seed):
             o = _strip_coadd(o) #Remove coadd since it isnt used in fitting
             o = _strip_zero_flux(o) #Remove any obs with zero flux
             o = _fill_empty_pix(o) #Interpolate empty pixels (and remove img where we cant do it properly)
-            o = _apply_pixel_scale(o) #Get right flux scale
+            o = _apply_pixel_scale(o) #Not sure??
 
             skip_me = False
             for ol in o:
