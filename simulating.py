@@ -90,7 +90,6 @@ class End2EndSimulation(object):
         #one for drawing random galaxies from descwl package
         self.galsource_rng = np.random.RandomState(seed=seeds[2])
         
-
         # load the image info for each band
         self.info = {}
         for band in bands:
@@ -101,6 +100,7 @@ class End2EndSimulation(object):
                 band=band)
             with open(fname, 'r') as fp:
                 self.info[band] = yaml.load(fp, Loader=yaml.Loader)
+        
 
     def run(self):
         """Run the simulation w/ galsim, writing the data to disk."""
@@ -109,8 +109,36 @@ class End2EndSimulation(object):
 
         # step 1 - make the truth catalog
         truth_cat = self._make_truth_catalog()
+        
+        # step 2 - Load simulated galaxy catalog if needed
+        
+        if self.gal_kws['gal_source'] == 'simple':
+            self.simulated_catalog = None
+            
+        elif self.gal_kws['gal_source'] == 'descwl':
+            self.simulated_catalog = init_descwl_catalog(survey_bands = "des-riz", rng = self.galsource_rng)
+            
+            #temporarily induce ellipticity
+#             self.simulated_catalog.cat['a_d'] = self.simulated_catalog.cat['a_d']
+#             self.simulated_catalog.cat['b_d'] = self.simulated_catalog.cat['a_d']*0.2
+#             self.simulated_catalog.cat['a_b'] = self.simulated_catalog.cat['a_b']
+#             self.simulated_catalog.cat['b_b'] = self.simulated_catalog.cat['a_b']*0.2
+            
+            #Temporarily set to zero just to ensure all galaxies have same direction
+#             simulated_catalog.cat['pa_disk'][:] = 0
+#             simulated_catalog.cat['pa_bulge'][:] = 0
+#             simulated_catalog.cat['a_d'] = self.galsource_rng.uniform(0.4, 0.8, len(simulated_catalog.cat['a_d'])) #0.2
+#             simulated_catalog.cat['b_d'] = simulated_catalog.cat['a_d'] #0.2
+#             simulated_catalog.cat['a_b'] = 0.05
+#             simulated_catalog.cat['b_b'] = 0.05
 
-        # step 2 - per band, write the images to a tile
+            #Temporarily remove all ellipticity
+            self.simulated_catalog.cat['a_d'] = self.simulated_catalog.cat['a_d']
+            self.simulated_catalog.cat['b_d'] = self.simulated_catalog.cat['a_d']
+            self.simulated_catalog.cat['a_b'] = self.simulated_catalog.cat['a_b']
+            self.simulated_catalog.cat['b_b'] = self.simulated_catalog.cat['a_b']
+
+        # step 3 - per band, write the images to a tile
         for band in self.bands:
             self._run_band(band=band, truth_cat=truth_cat)
 
@@ -121,21 +149,6 @@ class End2EndSimulation(object):
 
         noise_seeds = self.noise_rng.randint(
             low=1, high=2**30, size=len(self.info[band]['src_info']))
-
-        
-        if self.gal_kws['gal_source'] == 'simple':
-            simulated_catalog = None
-            
-        elif self.gal_kws['gal_source'] == 'descwl':
-            simulated_catalog = init_descwl_catalog(survey_bands = "des-riz")
-            
-            #Temporarily set to zero just to ensure all galaxies have same direction
-#             simulated_catalog.cat['pa_disk'][:] = 0
-#             simulated_catalog.cat['pa_bulge'][:] = 0
-#             simulated_catalog.cat['a_d'] = self.galsource_rng.uniform(0.4, 0.8, len(simulated_catalog.cat['a_d'])) #0.2
-#             simulated_catalog.cat['b_d'] = simulated_catalog.cat['a_d'] #0.2
-#             simulated_catalog.cat['a_b'] = 0.05
-#             simulated_catalog.cat['b_b'] = 0.05
         
         jobs = []
         for noise_seed, se_info in zip(
@@ -152,7 +165,7 @@ class End2EndSimulation(object):
                 gal_mag = self.gal_kws['gal_mag'],
                 gal_source = self.gal_kws['gal_source'],
                 galsource_rng = self.galsource_rng,
-                simulated_catalog = simulated_catalog)
+                simulated_catalog = self.simulated_catalog)
 
             jobs.append(joblib.delayed(_render_se_image)(
                 se_info=se_info,
@@ -162,7 +175,8 @@ class End2EndSimulation(object):
                 draw_method=self.draw_method,
                 noise_seed=noise_seed,
                 output_meds_dir=self.output_meds_dir,
-                src_func=src_func))
+                src_func=src_func,
+                gal_kws = self.gal_kws))
 
         with joblib.Parallel(
                 n_jobs=-1, backend='loky', verbose=50, max_nbytes=None) as p:
@@ -236,8 +250,8 @@ class End2EndSimulation(object):
                 ('x', 'f8'),
                 ('y', 'f8')])
         truth_cat['number'] = np.arange(len(ra)).astype(np.int64) + 1
-        truth_cat['descwl_ind'] = self.galsource_rng.randint(low=1, high=300_000, size=len(ra))
-        truth_cat['ra'] = ra
+        truth_cat['ind']    = self.galsource_rng.randint(low=1, high=300_000, size=len(ra))
+        truth_cat['ra']  = ra
         truth_cat['dec'] = dec
         truth_cat['x'] = x
         truth_cat['y'] = y
@@ -255,7 +269,7 @@ class End2EndSimulation(object):
 
 def _render_se_image(
         *, se_info, band, truth_cat, bounds_buffer_uv,
-        draw_method, noise_seed, output_meds_dir, src_func):
+        draw_method, noise_seed, output_meds_dir, src_func, gal_kws):
     """Render an SE image.
 
     This function renders a full image and writes it to disk.
@@ -285,6 +299,9 @@ def _render_se_image(
         A function with signature `src_func(src_ind)` that
         returns the galsim object to be rendered and image position
         for a given index of the truth catalog.
+    gal_kws : dict
+        Dictionary containing the keywords passed to the
+        the simulating code
     """
 
     # step 1 - get the set of good objects for the CCD
@@ -304,16 +321,18 @@ def _render_se_image(
 
     # step 3 - add bkg and noise
     # also removes the zero point
-    im, wgt, bkg = _add_noise_and_background(
+    im, wgt, bkg, bmask = _add_noise_mask_background(
         image=im,
         se_info=se_info,
-        noise_seed=noise_seed)
+        noise_seed=noise_seed,
+        gal_kws = gal_kws)
 
     # step 4 - write to disk
     _write_se_img_wgt_bkg(
         image=im,
         weight=wgt,
         background=bkg,
+        bmask=bmask,
         se_info=se_info,
         output_meds_dir=output_meds_dir)
 
@@ -352,8 +371,8 @@ def _render_all_objects(
     return im.array
 
 
-def _add_noise_and_background(*, image, se_info, noise_seed):
-    """add noise and background to an image, remove the zero point"""
+def _add_noise_mask_background(*, image, se_info, noise_seed, gal_kws):
+    """add noise, mask and background to an image, remove the zero point"""
 
     noise_rng = np.random.RandomState(seed=noise_seed)
 
@@ -370,12 +389,29 @@ def _add_noise_and_background(*, image, se_info, noise_seed):
     img_std = 1.0 / np.sqrt(np.median(wgt[bmask == 0]))
     image += (noise_rng.normal(size=image.shape) * img_std)
     wgt[:, :] = 1.0 / img_std**2
+    
+    
+    if gal_kws['Mask'] == True:
+        
+        pass
+        #mask the image
+#         image[bmask.astype(bool)] = np.NaN
+#         wgt[bmask.astype(bool)]   = np.NaN
+        
+    elif gal_kws['Mask'] == False:
+        bmask = np.zeros_like(bmask)
+        
+    else:
+        raise ValueError("Unknown value %s for keyword {Mask}. Choose True or False"%str(self.gal_kws['Mask']))
+    
+#     bmask = np.zeros_like(bmask)
+        
 
-    return image, wgt, bkg
+    return image, wgt, bkg, bmask
 
 
 def _write_se_img_wgt_bkg(
-        *, image, weight, background, se_info, output_meds_dir):
+        *, image, weight, background, bmask, se_info, output_meds_dir):
     # these should be the same
     assert se_info['image_path'] == se_info['weight_path'], se_info
     assert se_info['image_path'] == se_info['bmask_path'], se_info
@@ -396,8 +432,8 @@ def _write_se_img_wgt_bkg(
             with fitsio.FITS(sf.path, mode='rw') as fits:
                 fits[se_info['image_ext']].write(image)
                 fits[se_info['weight_ext']].write(weight)
-                fits[se_info['bmask_ext']].write(
-                    np.zeros_like(image, dtype=np.int16))
+#                 fits[se_info['bmask_ext']].write(np.zeros_like(image, dtype=np.int16))
+                fits[se_info['bmask_ext']].write(bmask)
 
     # get the background file path and write
     bkg_file = se_info['bkg_path'].replace(
@@ -457,15 +493,22 @@ class LazySourceCat(object):
             ra=self.truth_cat['ra'][ind] * galsim.degrees,
             dec=self.truth_cat['dec'][ind] * galsim.degrees))
         
-        normalized_flux = 10**((30 - self.gal_mag)/2.5)
         
         if self.gal_source == 'simple':
-            obj = galsim.Exponential(half_light_radius=0.5).withFlux(normalized_flux)
+            obj = galsim.Exponential(half_light_radius=0.5)
             
         elif self.gal_source == 'descwl':
-            obj = get_descwl_galaxy(descwl_ind = self.truth_cat['descwl_ind'][ind],
+            
+#             rad = np.random.default_rng(seed = self.truth_cat['ind'][ind]).uniform(0.3, 0.6, 1)[0]
+#             obj = galsim.Exponential(half_light_radius=rad)
+            
+            obj = get_descwl_galaxy(descwl_ind = self.truth_cat['ind'][ind],
                                     rng = self.galsource_rng, 
-                                    data = self.simulated_catalog)#.withFlux(normalized_flux)
+                                    data = self.simulated_catalog)
+            
+        if self.gal_mag is not None:
+            normalized_flux = 10**((30 - self.gal_mag)/2.5)
+            obj = obj.withFlux(normalized_flux)
         
         obj = obj.shear(g1=self.g1, g2=self.g2)
         psf = self.psf.getPSF(image_pos=pos)

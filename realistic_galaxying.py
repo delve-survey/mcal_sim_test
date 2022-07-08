@@ -9,7 +9,7 @@ import fitsio
 WLDeblendData = collections.namedtuple(
     'WLDeblendData',
     [
-        'cat', 'survey_name', 'bands', 'surveys',
+        'cat', 'rand_rot', 'survey_name', 'bands', 'surveys',
         'builders', 'total_sky', 'noise', 'ngal_per_arcmin2',
         'psf_fwhm', 'pixel_scale',
     ],
@@ -23,13 +23,17 @@ def _cached_catalog_read():
 
 
 # @functools.lru_cache(maxsize=8)
-def init_descwl_catalog(*, survey_bands):
+def init_descwl_catalog(*, survey_bands, rng):
     """Initialize weak lensing deblending survey data.
 
     Parameters
     ----------
     survey_bands : str
         The name of the survey followed by the bands like 'des-riz', 'lsst-iz', etc.
+        
+    rng : np.random.default_rng instance
+        The rng instance that will be used to generate the random rotation
+        of the galaxy
 
     Returns
     -------
@@ -116,8 +120,23 @@ def init_descwl_catalog(*, survey_bands):
     # square arcminute.
     ngal_per_arcmin2 = wldeblend_cat.size / (60 * 60)
 
+    
+    #CUT OUT LARGE GALAXIES FROM DATASET
+    #Check largest axis size and remove galaxy based on that size
+#     size = np.max([wldeblend_cat['a_d'], wldeblend_cat['b_d'], wldeblend_cat['a_b'], wldeblend_cat['b_b']], axis = 0)
+    size = np.max([wldeblend_cat['a_d'],wldeblend_cat['a_b']], axis = 0)
+#     wldeblend_cat['size'] = size
+#     wldeblend_cat = wldeblend_cat[size < 0.8]
+    wldeblend_cat = wldeblend_cat[size < 0.5]
+    
+    #If rng not supplied then don't do random rotation
+    if rng is None:
+        angle = None
+    else:
+        angle = rng.uniform(low = 0, high = 1, size = len(wldeblend_cat))*360
+    
     return WLDeblendData(
-        wldeblend_cat, survey_name, bands, surveys,
+        wldeblend_cat, angle, survey_name, bands, surveys,
         builders, total_sky, noise, ngal_per_arcmin2,
         psf_fwhm, scale,
     )
@@ -142,10 +161,16 @@ def get_descwl_galaxy(*, descwl_ind, rng, data):
     gal : galsim Object
         The galaxy as a galsim object.
     """
+    
+    #Overriding rng because we need rotation to be
+    #the same for every band for a given galaxy
+    
+#     rng      = np.random.default_rng(seed = descwl_ind)
+
+#     angle    = rng.uniform() * 360
+#     pa_angle = rng.uniform() * 360
 
 #     angle = 0
-    angle = rng.uniform() * 360
-    pa_angle = rng.uniform() * 360
 #     print(data.cat['pa_disk'].flags)
 #     print(data.cat['pa_bulge'].flags)
 #     data.cat['pa_disk'][rind] = pa_angle
@@ -156,7 +181,7 @@ def get_descwl_galaxy(*, descwl_ind, rng, data):
         data.builders[band].from_catalog(
             data.cat[descwl_ind], 0, 0,
             data.surveys[band].filter_band).model.rotate(
-                angle * galsim.degrees)
+                data.rand_rot[descwl_ind] * galsim.degrees)
         for band in range(len(data.builders))
     ])
 

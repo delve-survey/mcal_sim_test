@@ -12,12 +12,13 @@ from files import (
     expand_path,
     make_dirs_for_file)
 from constants import MEDSCONF
+from realistic_galaxying import init_descwl_catalog
 
 logger = logging.getLogger(__name__)
 
 TMP_DIR = os.environ['TMPDIR']
 
-def make_true_detections(*, tilename, bands, output_meds_dir, box_size):
+def make_true_detections(*, tilename, bands, output_meds_dir, box_size, config):
     """Make fake "true detection" catalogs as if source extractor had been
     run.
 
@@ -31,11 +32,13 @@ def make_true_detections(*, tilename, bands, output_meds_dir, box_size):
     bands : str
         The bands to run true detection.
     output_meds_dir : str
-        The output DEADATA/MEDS_DIR for the simulation data products.
+        The output DESDATA/MEDS_DIR for the simulation data products.
     box_size : int
         The desired box size in the MEDS files made from the fake
         "true detection" catalogs. The source extractor columns are hacked
         so that the MEDS making code produces this box size.
+    config : dict
+        A dictionary with the config params for the simulations
     """
 
     logger.info(' processing coadd tile %s', tilename)
@@ -56,10 +59,12 @@ def make_true_detections(*, tilename, bands, output_meds_dir, box_size):
             truth_cat=tcat,
             tilename=tilename,
             band=band,
-            box_size=box_size)
+            box_size=box_size,
+            config = config)
 
 
-def _reformat_catalog(*, output_cat_file, truth_cat, tilename, band, box_size):
+def _reformat_catalog(*, output_cat_file, truth_cat, tilename, band, box_size, config):
+    
     # now we reformat to the sectractor output
     # note that we are hacking on the fields to force the
     # MEDS maker to use the right sized stamps
@@ -69,6 +74,7 @@ def _reformat_catalog(*, output_cat_file, truth_cat, tilename, band, box_size):
     #   desired box size
     # 3. set b_world to 1 and a_world to 0
     # 4. set the flags to zero
+        
     dtype = [
         ('number', 'i4'),
         ('xmin_image', 'i4'),
@@ -93,6 +99,23 @@ def _reformat_catalog(*, output_cat_file, truth_cat, tilename, band, box_size):
     srcext_cat['b_world'] = 0
     srcext_cat['flags'] = 0
     srcext_cat['flux_radius'] = 0
+    
+    
+    if config['gal_kws']['gal_source'] == 'descwl':
+        
+#         pass 
+        #No need to supply rng since we just want the galaxy sizes, not rotations
+        simulated_catalog = init_descwl_catalog(survey_bands = "des-riz", rng = None)
+    
+#         simulated_catalog.cat['a_d'] = simulated_catalog.cat['a_d']
+#         simulated_catalog.cat['b_d'] = simulated_catalog.cat['a_d']
+#         simulated_catalog.cat['a_b'] = simulated_catalog.cat['a_b']
+#         simulated_catalog.cat['b_b'] = simulated_catalog.cat['a_b']
+            
+        size = np.max([simulated_catalog.cat['a_d'], simulated_catalog.cat['b_d'], 
+                       simulated_catalog.cat['a_b'], simulated_catalog.cat['b_b']], axis = 0)
+        srcext_cat['flux_radius'] = size[truth_cat['descwl_ind']]
+
 
     half = int(box_size / 2)
     xint = (truth_cat['x'] + 0.5).astype(np.int32)
