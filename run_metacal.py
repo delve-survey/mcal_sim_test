@@ -80,7 +80,7 @@ else:
     CONFIG['metacal']['metacal_pars'] = {
         'psf': 'fitgauss',
         'types': ['noshear', '1p', '1m', '2p', '2m'],
-        # 'use_noise_image': True,
+#         'use_noise_image': True,
     }
 
 
@@ -206,6 +206,15 @@ def _run_mcal_one_chunk(meds_files, start, end, seed):
             o[0][0].meta['orig_col'] = cat['orig_col'][ind, 0]
             o[0][0].meta['orig_row'] = cat['orig_row'][ind, 0]
 
+            #put all the good_fraction numbers into one list
+            #one entry per cutout (so all bands are combined here)
+            good_frac = []
+            weight    = []
+            for _one in o:
+                for _two in _one:
+                    good_frac.append(_two.meta['good_frac'])
+                    weight.append(_two.meta['weight'])
+                    
             nband = len(o)
             mcal = MetacalFitter(CONFIG, nband, rng)
 
@@ -217,6 +226,7 @@ def _run_mcal_one_chunk(meds_files, start, end, seed):
                 res = None
 
             if res is not None:
+                res['good_frac'] = np.average(good_frac, weights = weight) #store mean good_fraction per object
                 data.append(res)
 
         if len(data) > 0:
@@ -256,10 +266,11 @@ def _strip_zero_flux(mbobs):
 def _apply_pixel_scale(mbobs):
     for ol in mbobs:
         for o in ol:
-            scale = o.jacobian.get_scale()
-            scale2 = scale * scale
-            scale4 = scale2 * scale2
-            o.image = o.image / scale2
+            scale    = o.jacobian.get_scale()
+            scale2   = scale * scale
+            scale4   = scale2 * scale2
+            o.image  = o.image / scale2
+            o.noise  = o.noise / scale2
             o.weight = o.weight * scale4
     return mbobs
 
@@ -281,34 +292,54 @@ def _fill_empty_pix(mbobs, rng):
             msk = ol[i].bmask.astype(bool) #Mask where TRUE means bad pixel
             wgt = np.median(ol[i].weight[ol[i].weight != 0]) #Median weight used to populate noise in empty pix
             
-            if np.average(msk) > 0:
-                wcs       = ol[i].jacobian.get_galsim_wcs() #get wcs of this observations
-                gauss_wgt = gauss.drawImage(nx = msk.shape[0], ny = msk.shape[1], wcs = wcs, method = 'real_space').array #Create gaussian weights image (as array)
+            #get wcs of this observations
+            wcs = ol[i].jacobian.get_galsim_wcs()
 
-                #msk is nonzero for bad pixs. Invert it, and convert to int
-                good_frac = np.average(np.invert(msk).astype(int), weights = gauss_wgt) #Fraction of missing values
+            #Create gaussian weights image (as array)
+            gauss_wgt = gauss.drawImage(nx = msk.shape[0], ny = msk.shape[1], wcs = wcs, method = 'real_space').array 
 
-                #if weighted frac of good pixs is low, then skip observation
-                if good_frac < 0.99:
-                    continue
+            #msk is nonzero for bad pixs. Invert it, and convert to int
+            good_frac = np.average(np.invert(msk).astype(int), weights = gauss_wgt) #Fraction of missing values
+
+            #Save fraction of good pix. Will use later to remove
+            #problematic objects directly from metacal catalog
+            ol[i].meta['good_frac'] = good_frac
+            ol[i].meta['weight']    = wgt
+            
+            #Observation doesn't have noise image, and so add noise image in.
+            #Just random gaussian noise image using weights
+            #Need to do this for interpolation step    
+            ol[i].noise = rng.normal(loc = 0, scale = 1/np.sqrt(wgt), size = ol[i].image.shape)
+
+            
+            #If there are any bad mask pixels, then do interpolation
+#             if False:
+            if np.any(msk):
+                
+                #Rotate because Metacal needs this
+                msk |= np.rot90(msk, k = 1)
 
                 #Interpolate image to fill in gaps
                 im    = interpolate_image_at_mask(image=ol[i].image, weight=wgt, bad_msk=msk, 
-                                                  rng=rng, maxfrac=0.9, buff=4,
+                                                  rng=rng, maxfrac=0.1, buff=4,
                                                   fill_isolated_with_noise=True)
 
-    #             noise = interpolate_image_at_mask(image=ol[i].noise, weight=wgt, bad_msk=msk, 
-    #                                               rng=rng, maxfrac=0.9, buff=4,
-    #                                               fill_isolated_with_noise=True)
+                #Interpolate over noise image
+                noise = interpolate_image_at_mask(image=ol[i].noise, weight=wgt, bad_msk=msk, 
+                                                  rng=rng, maxfrac=0.1, buff=4,
+                                                  fill_isolated_with_noise=True)
 
                 #If we can't interpolate image or noise due to lack of data
                 #then we skip this observation (it is stripped from MultiBandObs list)
-                if (im is None): # | (noise is None):
+                if (im is None) | (noise is None):
                     continue
+#                 if (im is None):
+#                     continue
                     
-                    
-                ol[i].image = im
-    #             ol[i].noise = noise
+                #Set all masked pixel weights to 0.0
+                ol[i].image  = im
+                ol[i].weight = np.where(msk, 0, ol[i].weight)
+                ol[i].noise  = noise
 
             
             _ol.append(ol[i])

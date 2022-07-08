@@ -69,8 +69,6 @@ def galsim(tilename, bands, output_desdata, seed, config_file):
         psf_kws=config['psf_kws'])
     sim.run()
 
-#STOPPING here since we want to get the 2 first steps above done at first
-
 
 @cli.command('true-detection')
 @click.option('--tilename', type=str, required=True,
@@ -89,7 +87,8 @@ def true_detection(tilename, bands, output_desdata, config_file):
         tilename=tilename,
         bands=[b for b in bands],
         output_meds_dir=output_desdata,
-        box_size=config['true_detection']['box_size'])
+        box_size=config['true_detection']['box_size'],
+        config = config)
 
 
 @cli.command('swarp')
