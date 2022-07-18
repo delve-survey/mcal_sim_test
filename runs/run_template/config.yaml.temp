@@ -1,5 +1,7 @@
 gal_kws:
   type: exp
+  gal_source: simple
+  gal_mag: 18
   n_grid: 300
   g1: {{ g1 }}
   g2: 0.0
