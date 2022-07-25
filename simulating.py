@@ -101,42 +101,17 @@ class End2EndSimulation(object):
             with open(fname, 'r') as fp:
                 self.info[band] = yaml.load(fp, Loader=yaml.Loader)
         
-
     def run(self):
         """Run the simulation w/ galsim, writing the data to disk."""
 
         logger.info(' simulating coadd tile %s', self.tilename)
 
-        # step 1 - make the truth catalog
+        # step 1 - Load simulated galaxy catalog if needed
+        sim_cat   = self._make_sim_catalog() #Store catalog, but we don't really use it for anything
+        
+        # step 2 - make the truth catalog
         truth_cat = self._make_truth_catalog()
         
-        # step 2 - Load simulated galaxy catalog if needed
-        
-        if self.gal_kws['gal_source'] == 'simple':
-            self.simulated_catalog = None
-            
-        elif self.gal_kws['gal_source'] == 'descwl':
-            self.simulated_catalog = init_descwl_catalog(survey_bands = "des-riz", rng = self.galsource_rng)
-            
-            #temporarily induce ellipticity
-#             self.simulated_catalog.cat['a_d'] = self.simulated_catalog.cat['a_d']
-#             self.simulated_catalog.cat['b_d'] = self.simulated_catalog.cat['a_d']*0.2
-#             self.simulated_catalog.cat['a_b'] = self.simulated_catalog.cat['a_b']
-#             self.simulated_catalog.cat['b_b'] = self.simulated_catalog.cat['a_b']*0.2
-            
-            #Temporarily set to zero just to ensure all galaxies have same direction
-#             simulated_catalog.cat['pa_disk'][:] = 0
-#             simulated_catalog.cat['pa_bulge'][:] = 0
-#             simulated_catalog.cat['a_d'] = self.galsource_rng.uniform(0.4, 0.8, len(simulated_catalog.cat['a_d'])) #0.2
-#             simulated_catalog.cat['b_d'] = simulated_catalog.cat['a_d'] #0.2
-#             simulated_catalog.cat['a_b'] = 0.05
-#             simulated_catalog.cat['b_b'] = 0.05
-
-            #Temporarily remove all ellipticity
-            self.simulated_catalog.cat['a_d'] = self.simulated_catalog.cat['a_d']
-            self.simulated_catalog.cat['b_d'] = self.simulated_catalog.cat['a_d']
-            self.simulated_catalog.cat['a_b'] = self.simulated_catalog.cat['a_b']
-            self.simulated_catalog.cat['b_b'] = self.simulated_catalog.cat['a_b']
 
         # step 3 - per band, write the images to a tile
         for band in self.bands:
@@ -241,20 +216,28 @@ class End2EndSimulation(object):
             rng=self.galdither_rng, coadd_wcs=coadd_wcs,
             return_xy=True, n_grid=self.gal_kws['n_grid'])
 
-        truth_cat = np.zeros(
-            len(ra), dtype=[
-                ('number', 'i8'),
-                ('descwl_ind', 'i8'),
-                ('ra', 'f8'),
-                ('dec', 'f8'),
-                ('x', 'f8'),
-                ('y', 'f8')])
+        truth_cat = np.zeros(len(ra), dtype=[('number', 'i8'), ('ind', 'i8'), 
+                                             ('ra',  'f8'), ('dec', 'f8'), 
+                                             ('x', 'f8'), ('y', 'f8'),
+                                             ('a_world', 'f8'), ('b_world', 'f8'), ('size', 'f8')])
         truth_cat['number'] = np.arange(len(ra)).astype(np.int64) + 1
-        truth_cat['ind']    = self.galsource_rng.randint(low=1, high=300_000, size=len(ra))
         truth_cat['ra']  = ra
         truth_cat['dec'] = dec
         truth_cat['x'] = x
         truth_cat['y'] = y
+        
+        if self.gal_kws['gal_source'] in ['varsize', 'varang', 'varsizeang']:
+            truth_cat['ind']  = self.galsource_rng.randint(low=0, high=len(ra), size=len(ra))
+            truth_cat['size'] = self.simulated_catalog['size'][truth_cat['ind']] #r = sqrt(a*b), q = b/a
+            truth_cat['a_world'] = truth_cat['size']/np.sqrt(self.simulated_catalog['q'][truth_cat['ind']]) # a = r/sqrt(q)
+            truth_cat['b_world'] = truth_cat['size']*np.sqrt(self.simulated_catalog['q'][truth_cat['ind']]) # b = r*sqrt(q)
+            
+        elif self.gal_kws['gal_source'] == 'descwl':
+            truth_cat['ind'] = self.galsource_rng.randint(low=0, high=300_000, size=len(ra))
+            truth_cat['a_world'] = self.simulated_catalog['a_d'][truth_cat['ind']]
+            truth_cat['b_world'] = self.simulated_catalog['b_d'][truth_cat['ind']]
+            truth_cat['size']    = np.sqrt(truth_cat['a_world']*truth_cat['b_world'])
+            
 
         truth_cat_path = get_truth_catalog_path(
             meds_dir=self.output_meds_dir,
@@ -266,6 +249,52 @@ class End2EndSimulation(object):
 
         return truth_cat
 
+    def _make_sim_catalog(self):
+        
+        """Makes sim catalog"""
+        
+        if self.gal_kws['gal_source'] == 'simple':
+            self.simulated_catalog = None
+        
+        #Same catalog generation if we want to vary size or angle
+        
+        elif self.gal_kws['gal_source'] in ['varsize', 'varang', 'varsizeang']:
+            
+            #Simulate 500,000 objects. We won't use that many per tile.
+            #Hardcoding number because this happens before truth cat generation
+            #so we dont know how many objects are in this coadd
+            cat = np.zeros(500_000, dtype=[('size', 'f8'), ('q', 'f8'), ('ang_rot', 'f8')])
+            
+            cat['size']    = self.galsource_rng.uniform(self.gal_kws['size_min'], self.gal_kws['size_max'], len(cat)) #in arcsec
+            cat['q']       = self.galsource_rng.uniform(self.gal_kws['q_min'],    self.gal_kws['q_max'],    len(cat)) #dimensionless
+            cat['ang_rot'] = self.galsource_rng.uniform(0, 360, len(cat)) #in degrees
+
+            self.simulated_catalog = cat
+            
+        elif self.gal_kws['gal_source'] == 'descwl':
+            self.simulated_catalog = init_descwl_catalog(survey_bands = "des-riz", rng = self.galsource_rng)
+
+            #Temporarily remove all ellipticity
+            self.simulated_catalog.cat['a_d'] = self.simulated_catalog.cat['a_d']
+            self.simulated_catalog.cat['b_d'] = self.simulated_catalog.cat['a_d']
+            self.simulated_catalog.cat['a_b'] = self.simulated_catalog.cat['a_b']
+            self.simulated_catalog.cat['b_b'] = self.simulated_catalog.cat['a_b']
+            
+            #temporarily induce ellipticity
+#             self.simulated_catalog.cat['a_d'] = self.simulated_catalog.cat['a_d']
+#             self.simulated_catalog.cat['b_d'] = self.simulated_catalog.cat['a_d']*0.2
+#             self.simulated_catalog.cat['a_b'] = self.simulated_catalog.cat['a_b']
+#             self.simulated_catalog.cat['b_b'] = self.simulated_catalog.cat['a_b']*0.2
+            
+            #Temporarily set to zero just to ensure all galaxies have same direction
+#             simulated_catalog.cat['pa_disk'][:] = 0
+#             simulated_catalog.cat['pa_bulge'][:] = 0
+#             simulated_catalog.cat['a_d'] = self.galsource_rng.uniform(0.4, 0.8, len(simulated_catalog.cat['a_d'])) #0.2
+#             simulated_catalog.cat['b_d'] = simulated_catalog.cat['a_d'] #0.2
+#             simulated_catalog.cat['a_b'] = 0.05
+#             simulated_catalog.cat['b_b'] = 0.05
+
+        return self.simulated_catalog
 
 def _render_se_image(
         *, se_info, band, truth_cat, bounds_buffer_uv,
@@ -497,13 +526,29 @@ class LazySourceCat(object):
         if self.gal_source == 'simple':
             obj = galsim.Exponential(half_light_radius=0.5)
             
+        elif self.gal_source == 'varsize':
+            rad = self.simulated_catalog['size'][self.truth_cat['ind'][ind]] #Get radius from catalog (in arcmin)
+            
+            obj = galsim.Exponential(half_light_radius=rad)
+            
+        elif self.gal_source == 'varang':
+            q   = self.simulated_catalog['q'][self.truth_cat['ind'][ind]] #Get ellipticity
+            rot = self.simulated_catalog['ang_rot'][self.truth_cat['ind'][ind]] #Get rotation of galaxy
+            
+            obj = galsim.Exponential(half_light_radius=0.5).shear(q = q, beta = rot * galsim.degrees)
+            
+        elif self.gal_source == 'varsizeang':
+            rad = self.simulated_catalog['size'][self.truth_cat['ind'][ind]] #Get radius from catalog (in arcmin)
+            q   = self.simulated_catalog['q'][self.truth_cat['ind'][ind]] #Get ellipticity
+            rot = self.simulated_catalog['ang_rot'][self.truth_cat['ind'][ind]] #Get rotation of galaxy
+            
+            #Take exponential profile, shear it to cause intrinsic ellipticity in direction given by rot
+            obj = galsim.Exponential(half_light_radius=rad).shear(q = q, beta = rot * galsim.degrees)
+            
         elif self.gal_source == 'descwl':
             
-#             rad = np.random.default_rng(seed = self.truth_cat['ind'][ind]).uniform(0.3, 0.6, 1)[0]
-#             obj = galsim.Exponential(half_light_radius=rad)
-            
             obj = get_descwl_galaxy(descwl_ind = self.truth_cat['ind'][ind],
-                                    rng = self.galsource_rng, 
+                                    rng  = self.galsource_rng, 
                                     data = self.simulated_catalog)
             
         if self.gal_mag is not None:

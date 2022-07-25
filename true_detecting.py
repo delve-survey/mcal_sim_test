@@ -101,20 +101,11 @@ def _reformat_catalog(*, output_cat_file, truth_cat, tilename, band, box_size, c
     srcext_cat['flux_radius'] = 0
     
     
-    if config['gal_kws']['gal_source'] == 'descwl':
+    if config['gal_kws']['gal_source'] in ['varsize', 'varang', 'varsizeang', 'descwl']:
         
-#         pass 
-        #No need to supply rng since we just want the galaxy sizes, not rotations
-        simulated_catalog = init_descwl_catalog(survey_bands = "des-riz", rng = None)
-    
-#         simulated_catalog.cat['a_d'] = simulated_catalog.cat['a_d']
-#         simulated_catalog.cat['b_d'] = simulated_catalog.cat['a_d']
-#         simulated_catalog.cat['a_b'] = simulated_catalog.cat['a_b']
-#         simulated_catalog.cat['b_b'] = simulated_catalog.cat['a_b']
-            
-        size = np.max([simulated_catalog.cat['a_d'], simulated_catalog.cat['b_d'], 
-                       simulated_catalog.cat['a_b'], simulated_catalog.cat['b_b']], axis = 0)
-        srcext_cat['flux_radius'] = size[truth_cat['descwl_ind']]
+        srcext_cat['a_world'] = truth_cat['a_world']
+        srcext_cat['b_world'] = truth_cat['b_world']
+        srcext_cat['flux_radius'] = truth_cat['size']
 
 
     half = int(box_size / 2)
