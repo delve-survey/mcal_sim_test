@@ -136,12 +136,17 @@ def meds(tilename, bands, output_desdata, config_file, meds_config_file):
               help='the output DESDATA directory')
 @click.option('--seed', type=int, required=True,
               help='the base RNG seed')
-def metacal(tilename, bands, output_desdata, seed):
+@click.option('--metacal-config-file', type=str, required=True,
+              help='the YAML config file for metacal run')
+def metacal(tilename, bands, output_desdata, seed, metacal_config_file):
+    with open(metacal_config_file, 'r') as fp:
+        mcal_config = yaml.load(fp, Loader=yaml.Loader)
     run_metacal(
         tilename=tilename,
         output_meds_dir=output_desdata,
         bands=[b for b in bands],
-        seed=seed)
+        seed=seed,
+        mcal_config=mcal_config)
 
 
 if __name__ == '__main__':

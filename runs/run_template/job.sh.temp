@@ -4,7 +4,7 @@
 ##SBATCH --partition=chihway
 #SBATCH --account=pi-chihway
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=20
+#SBATCH --ntasks-per-node=28
 ##SBATCH --ntasks-per-node=40
 #SBATCH --time=10:00:00
 #SBATCH --output=/home/dhayaa/Desktop/DECADE/mcal_sim_test/runs/{{ model_name }}/%x.log
@@ -78,7 +78,8 @@ python run_sims.py \
   --tilename="$tilename" \
   --bands="$bands" \
   --output-desdata="$output" \
-  --seed="{{ seed_mcal }}"
+  --seed="{{ seed_mcal }}" \
+  --metacal-config-file="runs/{{ model_name }}/metacal.yaml"
 
 NOW=$( date '+%H:%M:%S' )
 echo "Completed mcal and moving meds + mcal output to $MCAL_DIR/{{ model_name }} at $NOW"
@@ -89,4 +90,4 @@ mv "$output/meds/y3v02/{{ tilename }}/{{ tilename }}_r_meds-y3v02.fits.fz" "$MCA
 mv "$output/meds/y3v02/{{ tilename }}/{{ tilename }}_i_meds-y3v02.fits.fz" "$MCAL_DIR/{{ model_name }}/meds_{{ tilename }}_g{{ plus_or_minus }}_i-y3v02.fits.fz"
 mv "$output/meds/y3v02/{{ tilename }}/{{ tilename }}_z_meds-y3v02.fits.fz" "$MCAL_DIR/{{ model_name }}/meds_{{ tilename }}_g{{ plus_or_minus }}_z-y3v02.fits.fz"
 
-rm -rf $output
+#rm -rf $output

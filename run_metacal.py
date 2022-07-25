@@ -18,73 +18,7 @@ import galsim
 
 logger = logging.getLogger(__name__)
 
-CONFIG = {
-    'metacal': {
-        # check for an edge hit
-        'bmask_flags': 2**30,
-
-        'model': 'gauss',
-
-        'max_pars': {
-            'ntry': 2,
-            'pars': {
-                'method': 'lm',
-                'lm_pars': {
-                    'maxfev': 2000,
-                    'xtol': 5.0e-5,
-                    'ftol': 5.0e-5,
-                }
-            }
-        },
-
-        'priors': {
-            'cen': {
-                'type': 'normal2d',
-                'sigma': 0.263
-            },
-
-            'g': {
-                'type': 'ba',
-                'sigma': 0.2
-            },
-
-            'T': {
-                'type': 'two-sided-erf',
-                'pars': [-1.0, 0.1, 1.0e+06, 1.0e+05]
-            },
-
-            'flux': {
-                'type': 'two-sided-erf',
-                'pars': [-100.0, 1.0, 1.0e+09, 1.0e+08]
-            }
-        },
-
-        'psf': {
-            'model': 'gauss',
-            'ntry': 2,
-            'lm_pars': {
-                'maxfev': 2000,
-                'ftol': 1.0e-5,
-                'xtol': 1.0e-5
-            }
-        }
-    },
-}
-
-if NGMIX_V1:
-    CONFIG['metacal']['metacal_pars'] = {
-        'types': ['noshear', '1p', '1m', '2p', '2m'],
-        # 'symmetrize_psf': True
-    }
-else:
-    CONFIG['metacal']['metacal_pars'] = {
-        'psf': 'fitgauss',
-        'types': ['noshear', '1p', '1m', '2p', '2m'],
-#         'use_noise_image': True,
-    }
-
-
-def run_metacal(*, tilename, output_meds_dir, bands, seed):
+def run_metacal(*, tilename, output_meds_dir, bands, seed, mcal_config):
     """Run metacal on a tile.
 
     Parameters
@@ -97,6 +31,8 @@ def run_metacal(*, tilename, output_meds_dir, bands, seed):
         The bands on which to run metacal.
     seed : int
         The seed for the global RNG.
+    mcal_config : yaml file
+        The config file for the metacal run
     """
     meds_files = [
         get_meds_file_path(
@@ -124,7 +60,7 @@ def run_metacal(*, tilename, output_meds_dir, bands, seed):
         start = chunk * n_obj_per_chunk
         end = min(start + n_obj_per_chunk, cat.size)
         jobs.append(joblib.delayed(_run_mcal_one_chunk)(
-            meds_files, start, end, seeds[chunk]))
+            meds_files, start, end, seeds[chunk], mcal_config))
 
     with joblib.Parallel(
             n_jobs=n_chunks, backend='loky',
@@ -147,7 +83,7 @@ def run_metacal(*, tilename, output_meds_dir, bands, seed):
     fitsio.write(mcal_pth, output, clobber=True)
 
 
-def _run_mcal_one_chunk(meds_files, start, end, seed):
+def _run_mcal_one_chunk(meds_files, start, end, seed, mcal_config):
     """Run metcal for `meds_files` only for objects from `start` to `end`.
 
     Note that `start` and `end` follow normal python indexing conventions so
@@ -163,6 +99,8 @@ def _run_mcal_one_chunk(meds_files, start, end, seed):
         One plus the last index to process.
     seed : int
         The seed for the RNG.
+    mcal_config : yaml
+        The config file for the metacal run
 
     Returns
     -------
@@ -187,10 +125,13 @@ def _run_mcal_one_chunk(meds_files, start, end, seed):
         for ind in range(start, end):
             o = mbmeds.get_mbobs(ind)
             
-            o = _strip_coadd(o) #Remove coadd since it isnt used in fitting
-            o = _strip_zero_flux(o) #Remove any obs with zero flux
-            o = _fill_empty_pix(o, rng) #Interpolate empty pixels (and remove img where we cant do it properly)
-            o = _apply_pixel_scale(o) #Not sure??
+            o = _strip_coadd(o, mcal_config) #Remove coadd since it isnt used in fitting
+            o = _strip_zero_flux(o, mcal_config) #Remove any obs with zero flux
+            
+            if mcal_config['custom']['interp_bad_pixels']:
+                o = _fill_empty_pix(o, rng, mcal_config) #Interpolate empty pixels (and remove img where we cant do it properly)
+            
+            o = _apply_pixel_scale(o, mcal_config) #Not sure??
 
             skip_me = False
             for ol in o:
@@ -206,17 +147,18 @@ def _run_mcal_one_chunk(meds_files, start, end, seed):
             o[0][0].meta['orig_col'] = cat['orig_col'][ind, 0]
             o[0][0].meta['orig_row'] = cat['orig_row'][ind, 0]
 
-            #put all the good_fraction numbers into one list
-            #one entry per cutout (so all bands are combined here)
-            good_frac = []
-            weight    = []
-            for _one in o:
-                for _two in _one:
-                    good_frac.append(_two.meta['good_frac'])
-                    weight.append(_two.meta['weight'])
+            if mcal_config['custom']['interp_bad_pixels']:
+                #put all the good_fraction numbers into one list
+                #one entry per cutout (so all bands are combined here)
+                good_frac = []
+                weight    = []
+                for _one in o:
+                    for _two in _one:
+                        good_frac.append(_two.meta['good_frac'])
+                        weight.append(_two.meta['weight'])
                     
             nband = len(o)
-            mcal = MetacalFitter(CONFIG, nband, rng)
+            mcal = MetacalFitter(mcal_config, nband, rng)
 
             try:
                 mcal.go([o])
@@ -226,7 +168,12 @@ def _run_mcal_one_chunk(meds_files, start, end, seed):
                 res = None
 
             if res is not None:
-                res['good_frac'] = np.average(good_frac, weights = weight) #store mean good_fraction per object
+                if mcal_config['custom']['interp_bad_pixels']:
+#                     print("I DID THINGS!!!!!")
+                    res['good_frac'] = np.average(good_frac, weights = weight) #store mean good_fraction per object
+                else:
+#                     print("I DID NOTHING!")
+                    res['good_frac'] = 1 #Else, we're assuming image is "perfect" == 1
                 data.append(res)
 
         if len(data) > 0:
@@ -238,7 +185,7 @@ def _run_mcal_one_chunk(meds_files, start, end, seed):
     return output
 
 
-def _strip_coadd(mbobs):
+def _strip_coadd(mbobs, mcal_config):
     _mbobs = MultiBandObsList()
     _mbobs.update_meta_data(mbobs.meta)
     for ol in mbobs:
@@ -250,7 +197,7 @@ def _strip_coadd(mbobs):
     return _mbobs
 
 
-def _strip_zero_flux(mbobs):
+def _strip_zero_flux(mbobs, mcal_config):
     _mbobs = MultiBandObsList()
     _mbobs.update_meta_data(mbobs.meta)
     for ol in mbobs:
@@ -263,19 +210,22 @@ def _strip_zero_flux(mbobs):
     return _mbobs
 
 
-def _apply_pixel_scale(mbobs):
+def _apply_pixel_scale(mbobs, mcal_config):
     for ol in mbobs:
         for o in ol:
             scale    = o.jacobian.get_scale()
             scale2   = scale * scale
             scale4   = scale2 * scale2
             o.image  = o.image / scale2
-            o.noise  = o.noise / scale2
             o.weight = o.weight * scale4
+            
+            if mcal_config['custom']['interp_bad_pixels']:
+                o.noise  = o.noise / scale2
+            
     return mbobs
 
 
-def _fill_empty_pix(mbobs, rng):
+def _fill_empty_pix(mbobs, rng, mcal_config):
     _mbobs = MultiBandObsList()
     _mbobs.update_meta_data(mbobs.meta)
     
