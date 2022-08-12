@@ -86,8 +86,12 @@ echo "Completed mcal and moving meds + mcal output to $MCAL_DIR/{{ model_name }}
 
 mv "$output/metacal/y3v02/{{ tilename }}_metacal.fits" "/project2/chihway/dhayaa/DECADE/Tests/{{ model_name }}/metacal_{{ tilename }}_seed{{ seed_galsim }}_g{{ plus_or_minus }}.fits"
 
-mv "$output/meds/y3v02/{{ tilename }}/{{ tilename }}_r_meds-y3v02.fits.fz" "$MCAL_DIR/{{ model_name }}/meds_{{ tilename }}_g{{ plus_or_minus }}_r-y3v02.fits.fz"
-mv "$output/meds/y3v02/{{ tilename }}/{{ tilename }}_i_meds-y3v02.fits.fz" "$MCAL_DIR/{{ model_name }}/meds_{{ tilename }}_g{{ plus_or_minus }}_i-y3v02.fits.fz"
-mv "$output/meds/y3v02/{{ tilename }}/{{ tilename }}_z_meds-y3v02.fits.fz" "$MCAL_DIR/{{ model_name }}/meds_{{ tilename }}_g{{ plus_or_minus }}_z-y3v02.fits.fz"
+if [ $(({{ seed_galsim }} % 10)) -eq 0 ];
+then
+    echo "Saving {{ tilename }} with seed {{ seed_galsim }}"
+    mv "$output/meds/y3v02/{{ tilename }}/{{ tilename }}_r_meds-y3v02.fits.fz" "$MCAL_DIR/{{ model_name }}/meds_{{ tilename }}_g{{ plus_or_minus }}_r-y3v02.fits.fz"
+    mv "$output/meds/y3v02/{{ tilename }}/{{ tilename }}_i_meds-y3v02.fits.fz" "$MCAL_DIR/{{ model_name }}/meds_{{ tilename }}_g{{ plus_or_minus }}_i-y3v02.fits.fz"
+    mv "$output/meds/y3v02/{{ tilename }}/{{ tilename }}_z_meds-y3v02.fits.fz" "$MCAL_DIR/{{ model_name }}/meds_{{ tilename }}_g{{ plus_or_minus }}_z-y3v02.fits.fz"
+fi;
 
-#rm -rf $output
+rm -rf $output/meds
