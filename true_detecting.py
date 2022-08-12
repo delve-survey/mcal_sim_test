@@ -101,11 +101,11 @@ def _reformat_catalog(*, output_cat_file, truth_cat, tilename, band, box_size, c
     srcext_cat['flux_radius'] = 0
     
     
-    if config['gal_kws']['gal_source'] in ['varsize', 'varang', 'varsizeang', 'descwl']:
+    if config['gal_kws']['gal_source'] in ['simpleElliptical', 'varsize', 'varang', 'varsizeang', 'descwl']:
         
         srcext_cat['a_world'] = truth_cat['a_world']
         srcext_cat['b_world'] = truth_cat['b_world']
-        srcext_cat['flux_radius'] = truth_cat['size']
+        srcext_cat['flux_radius'] = truth_cat['size']        
 
 
     half = int(box_size / 2)

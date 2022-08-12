@@ -164,7 +164,7 @@ def _build_psf_data(*, info, psf_kws, output_meds_dir):
             raise ValueError("psf type '%s' is not valid!" % psf_kws['type'])
 
     force_gauss = psf_kws['type'] in ['psfex', 'psfex_deconvolved', 'des_psfex', 'piff']
-    psf_data = [_load_psf_data(info, force_gauss=force_gauss)] #QUESTION FOR MATT: Do we force gaussian because we don't care about coadd image?
+    psf_data = [_load_psf_data(info, force_gauss=force_gauss)]
     for se_info in info['src_info']:
         #print(se_info.keys())
         psf_data.append(_load_psf_data(se_info))

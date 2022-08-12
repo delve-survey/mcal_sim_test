@@ -238,6 +238,12 @@ class End2EndSimulation(object):
             truth_cat['b_world'] = self.simulated_catalog['b_d'][truth_cat['ind']]
             truth_cat['size']    = np.sqrt(truth_cat['a_world']*truth_cat['b_world'])
             
+        elif self.gal_kws['gal_source'] == 'simpleElliptical':
+            truth_cat['ind']     = np.zeros(len(ra))
+            truth_cat['a_world'] = 1
+            truth_cat['b_world'] = 0.75
+            truth_cat['size']    = 0.5
+            
 
         truth_cat_path = get_truth_catalog_path(
             meds_dir=self.output_meds_dir,
@@ -253,7 +259,7 @@ class End2EndSimulation(object):
         
         """Makes sim catalog"""
         
-        if self.gal_kws['gal_source'] == 'simple':
+        if self.gal_kws['gal_source'] in ['simple', 'simpleElliptical']:
             self.simulated_catalog = None
         
         #Same catalog generation if we want to vary size or angle
@@ -449,9 +455,9 @@ def _write_se_img_wgt_bkg(
     assert se_info['image_path'] != se_info['bkg_path']
 
     # get the final image file path and write
-    image_file = se_info['image_path'].replace(
-        TMP_DIR, output_meds_dir)
+    image_file = se_info['image_path'].replace(TMP_DIR, output_meds_dir)
     make_dirs_for_file(image_file)
+    
     with tempfile.TemporaryDirectory() as tmpdir:
         with StagedOutFile(image_file, tmpdir=tmpdir) as sf:
             # copy to the place we stage from
@@ -465,8 +471,7 @@ def _write_se_img_wgt_bkg(
                 fits[se_info['bmask_ext']].write(bmask)
 
     # get the background file path and write
-    bkg_file = se_info['bkg_path'].replace(
-        TMP_DIR, output_meds_dir)
+    bkg_file = se_info['bkg_path'].replace(TMP_DIR, output_meds_dir)
     make_dirs_for_file(bkg_file)
     with tempfile.TemporaryDirectory() as tmpdir:
         with StagedOutFile(bkg_file, tmpdir=tmpdir) as sf:
@@ -525,6 +530,9 @@ class LazySourceCat(object):
         
         if self.gal_source == 'simple':
             obj = galsim.Exponential(half_light_radius=0.5)
+            
+        elif self.gal_source == 'simpleElliptical':
+            obj = galsim.Exponential(half_light_radius=0.5).shear(q = 0.75, beta = 30 * galsim.degrees)
             
         elif self.gal_source == 'varsize':
             rad = self.simulated_catalog['size'][self.truth_cat['ind'][ind]] #Get radius from catalog (in arcmin)
