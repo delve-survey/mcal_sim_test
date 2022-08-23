@@ -14,7 +14,7 @@ from des_info import add_extra_des_coadd_tile_info
 logger = logging.getLogger(__name__)
 
 
-def make_band_info(*, tilename, bands, output_meds_dir, n_files=None):
+def make_band_info(*, tilename, bands, output_meds_dir, config, n_files=None):
     """Make YAML files with the information on each band.
 
     Parameters
@@ -41,11 +41,16 @@ def make_band_info(*, tilename, bands, output_meds_dir, n_files=None):
     logger.info(' processing coadd tile %s', tilename)
 
     cfg = {
-        'campaign': 'Y3A1_COADD',
         'source_type': 'finalcut',
         'piff_run': PIFF_RUN,
         'medsconf': MEDSCONF
-    }
+        }
+    
+    if config['name'] == 'DES':
+        cfg['campaign'] = 'Y3A1_COADD'
+    elif config['name'] == 'DECADE':
+        cfg['campaign'] = 'DR3_1_1'
+    
     fnames = {}
     for band in bands:
         band_info_file = get_band_info_file(
