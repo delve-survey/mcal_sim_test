@@ -37,12 +37,17 @@ def cli():
               help='the output DESDATA directory')
 @click.option('--n-files', type=int, default=None,
               help='number of SE images to keep - useful for testing')
-def prep(tilename, bands, output_desdata, n_files):
+@click.option('--config-file', type=str, required=True,
+              help='the YAML config file')
+def prep(tilename, bands, output_desdata, n_files, config_file):
     """Prepare a tile for simulating."""
+    with open(config_file, 'r') as fp:
+        config = yaml.load(fp, Loader=yaml.Loader)
     make_band_info(
         tilename=tilename,
         bands=[b for b in bands],
         output_meds_dir=output_desdata,
+        config=config['survey_kws'],
         n_files=n_files)
 
 @cli.command()
