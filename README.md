@@ -4,7 +4,9 @@ Testing metacal measurements on simulated images
 ## Basic instructions:
 1. create a conda environment using ```conda env create --file environment.yml```
 
-2. activate the environment by doing ```conda activate shear``` (remember to export several needed directories, in particular TMPDIR for now)
+2a. activate the environment by doing ```conda activate shear``` (remember to export several needed directories, in particular TMPDIR for now)
+
+2b. Need to install des-easyaccess. For this you need des-easyaccess, cx_oracle AND oracle-instantclient. Last package has libraries needed for the others.
 
 3. that's probably not a complete set of all packages you need; in particular you should download desmeds from https://github.com/esheldon/desmeds (because the conda version doesn't have all we need); you might or might not need to install desmeds manually following the instructions in that link; you'll also need easyaccess and other simpler conda-installable packages
 
