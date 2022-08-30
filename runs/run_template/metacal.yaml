@@ -39,7 +39,11 @@ metacal:
     metacal_pars:
         psf: 'fitgauss'
         types: ['noshear', '1p', '1m', '2p', '2m']
-        use_noise_image: False
+        use_noise_image: True
 
 custom:
-    interp_bad_pixels: False
+    interp_bad_pixels: True
+    maxbadfrac: 0.1
+    goodfrac: True
+    symmetrize_mask: True
+    Nexp_max: 10
