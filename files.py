@@ -146,8 +146,9 @@ def get_band_info_file(*, meds_dir, medsconf, tilename, band):
         '%s_%s_info.yaml' % (tilename, band))
 
 
-def get_swarp_flist_path(*, meds_dir, medsconf):
-    """Get the path of the text files holding the list of files
+def get_swarp_files_path(*, meds_dir, medsconf):
+    """Get the path of files related to swarp (txt files of exp lists
+    and then also the final detection coadd),
     that go into the swarp coadd for this `tilename` and `band`.
 
     Parameters
@@ -170,8 +171,35 @@ def get_swarp_flist_path(*, meds_dir, medsconf):
         meds_dir,
         'simple_des_y3_sims',
         medsconf,
-        'band_info_files',
-        'swarp_lists')
+        'swarp_files')
+
+
+def get_nwgint_path(*, meds_dir, medsconf, band):
+    """Get the path of the ngwint files used as intermediaries
+    that go into the swarp coadd for this `tilename` and `band`.
+
+    Parameters
+    ----------
+    meds_dir : str
+        The DESDATA/MEDS_DIR path where the info file is located.
+    medsconf : str
+        The MEDS file version (e.g., 'y3v02').
+    tilename : str
+        The DES coadd tilename (e.g., 'DES2122+0001').
+    bands : str
+        A bands (e.g., 'r').
+
+    Returns
+    -------
+    path : str
+        The path of list files for coadd generation.
+    """
+    return os.path.join(
+        meds_dir,
+        'simple_des_y3_sims',
+        medsconf,
+        'nwgint',
+        'sources-%s'%band)
 
 
 def get_piff_path_from_image_path(*, image_path, piff_run):
