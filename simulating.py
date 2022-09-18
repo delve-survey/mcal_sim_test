@@ -429,7 +429,8 @@ def _add_noise_mask_background(*, image, se_info, noise_seed, gal_kws):
     if gal_kws['Mask'] == True:
         
         pass
-        #mask the image
+
+    #mask the image
 #         image[bmask.astype(bool)] = np.NaN
 #         wgt[bmask.astype(bool)]   = np.NaN
         
@@ -438,9 +439,7 @@ def _add_noise_mask_background(*, image, se_info, noise_seed, gal_kws):
         
     else:
         raise ValueError("Unknown value %s for keyword {Mask}. Choose True or False"%str(self.gal_kws['Mask']))
-    
-#     bmask = np.zeros_like(bmask)
-        
+            
 
     return image, wgt, bkg, bmask
 
