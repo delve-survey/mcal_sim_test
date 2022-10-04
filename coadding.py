@@ -1,6 +1,6 @@
 import numpy as np
 import yaml
-
+import os
 from constants import MEDSCONF, PIFF_RUN
 from files import (get_band_info_file, make_dirs_for_file, 
                    get_swarp_files_path, get_nwgint_path)
@@ -33,11 +33,11 @@ class MakeSwarpCoadds(object):
                 self.info[band] = yaml.load(fp, Loader=yaml.Loader)
                 
                 
-        self.swarp_path = get_swarp_files_path(output_meds_dir, MEDSCONF)
+        self.swarp_path = get_swarp_files_path(meds_dir=output_meds_dir, medsconf=MEDSCONF)
         
         self.nwgint_flists = {b:[] for b in bands}
     
-    def go(self):
+    def run(self):
         
         self._make_nwgint_files()
         self._make_filelists()
@@ -56,14 +56,13 @@ class MakeSwarpCoadds(object):
             #Get header from original coadd to get tileid (but also tilename since we can)
             header = fitsio.read_header(self.info[band]['image_path'], ext = 1)
            
+            #Get base output and make dirs if needed
+            out_basepath = get_nwgint_path(meds_dir = self.output_meds_dir, medsconf = MEDSCONF, band = band)
+            
             args = {}
             
             args['TILENAME'] = header['TILENAME']
             args['TILEID']   = header['TILEID']
-            
-            #Get base output and make dirs if needed
-            out_basepath = get_nwgint_path(self.output_meds_dir, MEDSCONF, band)
-            make_dirs_for_file(out_basepath)
             
             print("Creating nwgint images for %s band" % band)
             
@@ -71,17 +70,19 @@ class MakeSwarpCoadds(object):
                 
                 args['IMAGE_PATH'] = src['image_path']
                 args['HEAD_PATH']  = src['head_path']
-                args['OUT_PATH']   = os.join(out_basepath, src['filename'].replace('immasked', 'nwgint'))
+                args['OUT_PATH']   = os.path.join(out_basepath, src['filename'].replace('immasked', 'nwgint'))
+                
+                make_dirs_for_file(args['OUT_PATH'])
                                 
                 #add nwgint info back into THIS specific info dict
                 src['nwgint_path'] = args['OUT_PATH']
                 
-                pix_command = "$PIXCORRECT_DIR/bin/coadd_nwgint \
+                pix_command = "coadd_nwgint \
                                     -i %(IMAGE_PATH)s \
                                     -o %(OUT_PATH)s \
                                     --headfile %(HEAD_PATH)s \
                                     --max_cols 50  \
-                                    -v  \
+                                    -v \
                                     --interp_mask TRAIL,BPM  \
                                     --invalid_mask EDGE \
                                     --null_mask BPM,BADAMP,EDGEBLEED,EDGE,CRAY,SSXTALK,STREAK,TRAIL  \
@@ -108,7 +109,7 @@ class MakeSwarpCoadds(object):
 #                                     --hdupcfg $DESDM_CONFIG/Y6A1_v1_coadd_nwgint.config  \
 #                                     --streak_file $DESDM_CONFIG/Y3A2_v5_streaks_update-Y1234_FINALCUT_v1.fits" % args
                 
-                os.system(pix_command)
+#                 os.system(pix_command)
                
         
         return 1
@@ -130,37 +131,38 @@ class MakeSwarpCoadds(object):
             for coadd_type in ['wgt', 'msk']:
                 
 
-                fname = os.path.join(self.swarp_path, self.tilename + '_swarp-band-%s-sci.list' % coadd_type)
+                fname = os.path.join(self.swarp_path, self.tilename + '_swarp-%s-%s-sci.list' % (band, coadd_type))
+                make_dirs_for_file(fname)
                 with open(fname, 'w') as f:
                     for src in self.info[band]['src_info']:
-                        fobj.write("%s[0]\n" % src['nwgint_path'])
+                        f.write("%s[0]\n" % src['nwgint_path'])
                     
                 print("Finished writing image list to %s" % fname)
             
             
-                fname = os.path.join(self.swarp_path, self.tilename + '_swarp-band-%s-flx.list' % coadd_type)
+                fname = os.path.join(self.swarp_path, self.tilename + '_swarp-%s-%s-flx.list' % (band, coadd_type))
                 with open(fname, 'w') as f:
                     for src in self.info[band]['src_info']:
                         flux = 10. ** (0.4 * (30.0 - src['magzp'])) #Convert mag zeropoint to flux zp
-                        fobj.write("%.16g\n" % flux)
+                        f.write("%.16g\n" % flux)
                     
                     
             
             #However, the wgt files are different.
             #So running commands separately, outside the loop
             
-            fname = os.path.join(self.swarp_path, self.tilename + '_swarp-band-wgt-wgt.list')
+            fname = os.path.join(self.swarp_path, self.tilename + '_swarp-%s-wgt-wgt.list' % band)
             with open(fname, 'w') as f:
                 for src in self.info[band]['src_info']:
-                    fobj.write("%s[2]\n" % src['weight_path'])
+                    f.write("%s[2]\n" % src['nwgint_path'])
                     
             print("Finished writing flx scales (zeropoints) list to %s" % fname)
             
             
-            fname = os.path.join(self.swarp_path, self.tilename + '_swarp-band-msk-wgt.list')
+            fname = os.path.join(self.swarp_path, self.tilename + '_swarp-%s-msk-wgt.list' % band)
             with open(fname, 'w') as f:
                 for src in self.info[band]['src_info']:
-                    fobj.write("%s[1]\n" % src['weight_path'])
+                    f.write("%s[1]\n" % src['nwgint_path'])
                     
             print("Finished writing flx scales (zeropoints) list to %s" % fname)
         
@@ -187,55 +189,58 @@ class MakeSwarpCoadds(object):
                 "TILEID"   : header['TILEID']
                 }
         
-        "$SWARP_DIR/swarp \
-        @list/band-swarp-wgt/DES0130-4623_r5137p01_i_swarp-band-wgt-sci.list \
-        -c config/Y6A1_v1_swarp.config \
-        -WEIGHTOUT_NAME coadd/DES0130-4623_r5137p01_i_wgt.fits \
-        -CENTER 22.632611,-46.386111 \
-        -PIXEL_SCALE 0.263 \
-        -FSCALE_DEFAULT @list/band-swarp-wgt/DES0130-4623_r5137p01_i_swarp-band-wgt-flx.list \
-        -IMAGE_SIZE 10000,10000 \
-        -IMAGEOUT_NAME coadd/DES0130-4623_r5137p01_i_sci.fits \
-        -COMBINE_TYPE WEIGHTED \
-        -WEIGHT_IMAGE @list/band-swarp-wgt/DES0130-4623_r5137p01_i_swarp-band-wgt-wgt.list \
-        -NTHREADS 8 \
-        -BLANK_BADPIXELS Y"
+#         "$SWARP_DIR/swarp \
+#         @list/band-swarp-wgt/DES0130-4623_r5137p01_i_swarp-band-wgt-sci.list \
+#         -c config/Y6A1_v1_swarp.config \
+#         -WEIGHTOUT_NAME coadd/DES0130-4623_r5137p01_i_wgt.fits \
+#         -CENTER 22.632611,-46.386111 \
+#         -PIXEL_SCALE 0.263 \
+#         -FSCALE_DEFAULT @list/band-swarp-wgt/DES0130-4623_r5137p01_i_swarp-band-wgt-flx.list \
+#         -IMAGE_SIZE 10000,10000 \
+#         -IMAGEOUT_NAME coadd/DES0130-4623_r5137p01_i_sci.fits \
+#         -COMBINE_TYPE WEIGHTED \
+#         -WEIGHT_IMAGE @list/band-swarp-wgt/DES0130-4623_r5137p01_i_swarp-band-wgt-wgt.list \
+#         -NTHREADS 8 \
+#         -BLANK_BADPIXELS Y"
         
         for band in self.bands:
             
             coadd_file = self.info[band]['image_path'].replace(TMP_DIR, self.output_meds_dir)
             make_dirs_for_file(coadd_file)
             
+#             print(coadd_file)
+            
             #Is of the format "$DIR/{tilename}_{band}" without the .fits.fz extension
             args['out_prefix'] = coadd_file.replace('.fits.fz', '')
+            args['band'] = band
             
             
             swarp_command_wgt = "$SWARP_DIR/src/swarp \
-                                        @%(list_prefix)s-wgt-sci.list \
+                                        @%(list_prefix)s_swarp-%(band)s-wgt-sci.list \
                                         -c $DESDM_CONFIG/Y6A1_v1_swarp.config \
                                         -WEIGHTOUT_NAME %(out_prefix)s_wgt.fits \
-                                        -CENTER %(RA)0.6f, %(DEC)0.6f \
+                                        -CENTER %(RA)0.6f,%(DEC)0.6f \
                                         -PIXEL_SCALE 0.263 \
-                                        -FSCALE_DEFAULT @%(list_prefix)s-wgt-flx.list \
+                                        -FSCALE_DEFAULT @%(list_prefix)s_swarp-%(band)s-wgt-flx.list \
                                         -IMAGE_SIZE 10000,10000 \
                                         -IMAGEOUT_NAME %(out_prefix)s_sci.fits \
                                         -COMBINE_TYPE WEIGHTED \
-                                        -WEIGHT_IMAGE @%(list_prefix)s-wgt-wgt.list \
+                                        -WEIGHT_IMAGE @%(list_prefix)s_swarp-%(band)s-wgt-wgt.list \
                                         -NTHREADS 8 \
                                         -BLANK_BADPIXELS Y" % args
             
             
             swarp_command_msk = "$SWARP_DIR/src/swarp \
-                                        @%(list_prefix)s-msk-sci.list \
+                                        @%(list_prefix)s_swarp-%(band)s-msk-sci.list \
                                         -c $DESDM_CONFIG/Y6A1_v1_swarp.config \
                                         -WEIGHTOUT_NAME %(out_prefix)s_msk.fits \
-                                        -CENTER %(RA)0.6f, %(DEC)0.6f \
+                                        -CENTER %(RA)0.6f,%(DEC)0.6f \
                                         -PIXEL_SCALE 0.263 \
-                                        -FSCALE_DEFAULT @%(list_prefix)s-msk-flx.list \
+                                        -FSCALE_DEFAULT @%(list_prefix)s_swarp-%(band)s-msk-flx.list \
                                         -IMAGE_SIZE 10000,10000 \
                                         -IMAGEOUT_NAME %(out_prefix)s_tmp-sci.fits \
                                         -COMBINE_TYPE WEIGHTED \
-                                        -WEIGHT_IMAGE @%(list_prefix)s-msk-wgt.list \
+                                        -WEIGHT_IMAGE @%(list_prefix)s_swarp-%(band)s-msk-wgt.list \
                                         -NTHREADS 8 \
                                         -BLANK_BADPIXELS Y" % args
             
@@ -269,15 +274,16 @@ class MakeSwarpCoadds(object):
 #                                         -BLANK_BADPIXELS Y" % args
             
             
+#             print(swarp_command_wgt)
             os.system(swarp_command_wgt)
             print("Finished swarp wgt coadd for %s band" % band)
             
+#             print(swarp_command_msk)
             os.system(swarp_command_msk)
             print("Finished swarp msk coadd for %s band" % band)
             
             
-            args = {}
-            command_assemble = "$DESPYFITS_DIR/bin/coadd_assemble \
+            command_assemble = "coadd_assemble \
                                         --sci_file %(out_prefix)s_sci.fits \
                                         --wgt_file %(out_prefix)s_wgt.fits \
                                         --msk_file %(out_prefix)s_msk.fits  \
@@ -294,6 +300,7 @@ class MakeSwarpCoadds(object):
                                         --ydilate 3 " % args
             
             os.system(command_assemble)
+#             print(command_assemble)
             print("Finished assembling coadd for %s band" % band)
                         
         return 1
@@ -325,10 +332,10 @@ class MakeSwarpCoadds(object):
                 "TILEID"   : header['TILEID']
                 }
         
-        swarp_command_wgt = "$SWARP_DIR/src/swarp s%(sci_paths)s  \
+        swarp_command_wgt = "$SWARP_DIR/src/swarp %(sci_paths)s  \
                                     -c $DESDM_CONFIG/Y6A1_v1_swarp.config  \
                                     -WEIGHTOUT_NAME %(out_prefix)s/%(TILENAME)s_det_wgt.fits  \
-                                    -CENTER %(RA)0.6f, %(DEC)0.6f \
+                                    -CENTER %(RA)0.6f,%(DEC)0.6f \
                                     -RESAMPLE Y \
                                     -RESAMPLING_TYPE NEAREST  \
                                     -COPY_KEYWORDS BUNIT,TILENAME,TILEID \
@@ -340,10 +347,10 @@ class MakeSwarpCoadds(object):
                                     -NTHREADS 8  \
                                     -BLANK_BADPIXELS Y" % args
         
-        swarp_command_msk = "$SWARP_DIR/src/swarp s%(sci_paths)s  \
+        swarp_command_msk = "$SWARP_DIR/src/swarp %(sci_paths)s  \
                                     -c $DESDM_CONFIG/Y6A1_v1_swarp.config  \
                                     -WEIGHTOUT_NAME %(out_prefix)s/%(TILENAME)s_det_msk.fits  \
-                                    -CENTER %(RA)0.6f, %(DEC)0.6f \
+                                    -CENTER %(RA)0.6f,%(DEC)0.6f \
                                     -RESAMPLE Y \
                                     -RESAMPLING_TYPE NEAREST  \
                                     -COPY_KEYWORDS BUNIT,TILENAME,TILEID \
@@ -389,8 +396,7 @@ class MakeSwarpCoadds(object):
         os.system(swarp_command_msk)
         print("Finished swarp msk coadd for %s band" % band)
         
-        args = {}
-        command_assemble = "$DESPYFITS_DIR/bin/coadd_assemble \
+        command_assemble = "coadd_assemble \
                                         --sci_file %(out_prefix)s/%(TILENAME)s_det_sci.fits  \
                                         --wgt_file %(out_prefix)s/%(TILENAME)s_det_wgt.fits \
                                         --msk_file %(out_prefix)s/%(TILENAME)s_det_msk.fits  \
