@@ -68,7 +68,7 @@ class MakeSwarpCoadds(object):
             
             for src in self.info[band]['src_info']:
                 
-                args['IMAGE_PATH'] = src['image_path']
+                args['IMAGE_PATH'] = src['image_path'].replace(TMP_DIR, self.output_meds_dir)
                 args['HEAD_PATH']  = src['head_path']
                 args['OUT_PATH']   = os.path.join(out_basepath, src['filename'].replace('immasked', 'nwgint'))
                 
@@ -109,7 +109,7 @@ class MakeSwarpCoadds(object):
 #                                     --hdupcfg $DESDM_CONFIG/Y6A1_v1_coadd_nwgint.config  \
 #                                     --streak_file $DESDM_CONFIG/Y3A2_v5_streaks_update-Y1234_FINALCUT_v1.fits" % args
                 
-#                 os.system(pix_command)
+                os.system(pix_command)
                
         
         return 1
@@ -212,6 +212,7 @@ class MakeSwarpCoadds(object):
             
             #Is of the format "$DIR/{tilename}_{band}" without the .fits.fz extension
             args['out_prefix'] = coadd_file.replace('.fits.fz', '')
+            args['out_dir']    = os.path.dirname(args['out_prefix'])
             args['band'] = band
             
             
@@ -227,6 +228,7 @@ class MakeSwarpCoadds(object):
                                         -COMBINE_TYPE WEIGHTED \
                                         -WEIGHT_IMAGE @%(list_prefix)s_swarp-%(band)s-wgt-wgt.list \
                                         -NTHREADS 8 \
+                                        -RESAMPLE_DIR %(out_dir) \
                                         -BLANK_BADPIXELS Y" % args
             
             
@@ -242,6 +244,7 @@ class MakeSwarpCoadds(object):
                                         -COMBINE_TYPE WEIGHTED \
                                         -WEIGHT_IMAGE @%(list_prefix)s_swarp-%(band)s-msk-wgt.list \
                                         -NTHREADS 8 \
+                                        -RESAMPLE_DIR %(out_dir) \
                                         -BLANK_BADPIXELS Y" % args
             
             
@@ -305,7 +308,7 @@ class MakeSwarpCoadds(object):
                         
         return 1
         
-    def _make_detection_coadd():
+    def _make_detection_coadd(self):
         '''
         Combine swarp coadds to make detection coadd for
         Source Extractor to run on.
@@ -345,6 +348,7 @@ class MakeSwarpCoadds(object):
                                     -COMBINE_TYPE AVERAGE \
                                     -WEIGHT_IMAGE %(wgt_paths)s  \
                                     -NTHREADS 8  \
+                                    -RESAMPLE_DIR %(out_prefix) \
                                     -BLANK_BADPIXELS Y" % args
         
         swarp_command_msk = "$SWARP_DIR/src/swarp %(sci_paths)s  \
@@ -360,6 +364,7 @@ class MakeSwarpCoadds(object):
                                     -COMBINE_TYPE AVERAGE \
                                     -WEIGHT_IMAGE %(msk_paths)s  \
                                     -NTHREADS 8  \
+                                    -RESAMPLE_DIR %(out_prefix) \
                                     -BLANK_BADPIXELS Y" % args
         
 #         swarp_command_wgt = "$SWARP_DIR/src/swarp sci[r].fits,sci[i].fits,sci[z].fits  \
@@ -391,10 +396,10 @@ class MakeSwarpCoadds(object):
 #                                     -NTHREADS 8  -BLANK_BADPIXELS Y" % args
         
         os.system(swarp_command_wgt)
-        print("Finished swarp wgt coadd for %s band" % band)
+        print("Finished swarp wgt coadd for det band")
 
         os.system(swarp_command_msk)
-        print("Finished swarp msk coadd for %s band" % band)
+        print("Finished swarp msk coadd for det band")
         
         command_assemble = "coadd_assemble \
                                         --sci_file %(out_prefix)s/%(TILENAME)s_det_sci.fits  \
@@ -414,9 +419,9 @@ class MakeSwarpCoadds(object):
                                         --ydilate 3" % args
             
         os.system(command_assemble)
-        print("Finished assembling coadd")
+        print("Finished assembling coadd for det band")
         
 #         os.system(r'rm %(out_prefix)s/%(TILENAME)s_det_tmpsci.fits' % args)
-#         print("Finished removing temp sci file)
+#         print("Finished removing temp sci file")
         
         return 1
