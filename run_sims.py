@@ -90,12 +90,14 @@ def galsim(tilename, bands, output_desdata, seed, config_file):
 def true_detection(tilename, bands, output_desdata, config_file):
     with open(config_file, 'r') as fp:
         config = yaml.load(fp, Loader=yaml.Loader)
-    make_true_detections(
-        tilename=tilename,
-        bands=[b for b in bands],
-        output_meds_dir=output_desdata,
-        box_size=config['true_detection']['box_size'],
-        config = config)
+        
+    if config['gal_kws'] in ['grid-truedet', 'random-truedet']:
+        make_true_detections(
+            tilename=tilename,
+            bands=[b for b in bands],
+            output_meds_dir=output_desdata,
+            box_size=config['true_detection']['box_size'],
+            config = config)
 
 
 @cli.command('swarp')
@@ -111,12 +113,14 @@ def true_detection(tilename, bands, output_desdata, config_file):
 def swarp(tilename, bands, output_desdata, config_file):
     with open(config_file, 'r') as fp:
         config = yaml.load(fp, Loader=yaml.Loader)
-    coadd = MakeSwarpCoadds(
-        output_meds_dir=output_desdata,
-        tilename=tilename,
-        bands=[b for b in bands],
-        config=config)
-    coadd.run()
+        
+    if config['gal_kws'] not in ['grid-truedet', 'random-truedet']:
+        coadd = MakeSwarpCoadds(
+            output_meds_dir=output_desdata,
+            tilename=tilename,
+            bands=[b for b in bands],
+            config=config)
+        coadd.run()
 
 
 @cli.command('source-extractor')
@@ -132,12 +136,14 @@ def swarp(tilename, bands, output_desdata, config_file):
 def source_extractor(tilename, bands, output_desdata, config_file):
     with open(config_file, 'r') as fp:
         config = yaml.load(fp, Loader=yaml.Loader)
-    SrcExtractor = MakeSrcExtractorCat(
-                                output_meds_dir=output_desdata,
-                                tilename=tilename,
-                                bands=[b for b in bands],
-                                config=config)
-    SrcExtractor.run()
+        
+    if config['gal_kws'] not in ['grid-truedet', 'random-truedet']:
+        SrcExtractor = MakeSrcExtractorCat(
+                                    output_meds_dir=output_desdata,
+                                    tilename=tilename,
+                                    bands=[b for b in bands],
+                                    config=config)
+        SrcExtractor.run()
 
 
 @cli.command()

@@ -82,10 +82,10 @@ class End2EndSimulation(object):
         # make the RNGS. Extra initial seeds in case we need even more multiple random generators in future
         seeds = np.random.RandomState(seed=seed).randint(low=1, high=2**30, size=10)
         
-        # one for galaxies (dither) in the truth catalog
+        # one for galaxies in the truth catalog
         # one for noise in the images
-        self.galdither_rng = np.random.RandomState(seed=seeds[0])
-        self.noise_rng = np.random.RandomState(seed=seeds[1])
+        self.truth_cat_rng = np.random.RandomState(seed=seeds[0])
+        self.noise_rng     = np.random.RandomState(seed=seeds[1])
         
         #one for drawing random galaxies from descwl package
         self.galsource_rng = np.random.RandomState(seed=seeds[2])
@@ -212,10 +212,27 @@ class End2EndSimulation(object):
             image_path=self.info[band]['image_path'],
             image_ext=self.info[band]['image_ext'])
 
-        ra, dec, x, y = make_coadd_grid_radec(
-            rng=self.galdither_rng, coadd_wcs=coadd_wcs,
-            return_xy=True, n_grid=self.gal_kws['n_grid'])
-
+        #Set what type of galaxy counts we use
+        #Either constant counts per tile
+        #or draw from poisson
+        if self.gal_kws['ngal_type'] == 'true':
+            n_grid = self.gal_kws['n_grid']
+            
+        elif self.gal_kws['ngal_type'] == 'poisson':
+            n_gal  = self.truth_cat_rng.poisson(lam=self.gal_kws['n_grid']**2)
+        
+        
+        #Set what type of grid we use
+        if self.gal_kws['truth_type'] in ['grid', 'grid-truedet']:
+            ra, dec, x, y = make_coadd_grid_radec(
+                rng=self.truth_cat_rng, coadd_wcs=coadd_wcs,
+                return_xy=True, n_grid=n_grid)
+            
+        elif self.gal_kws['truth_type'] in ['random', 'random-truedet']:
+            ra, dec, x, y = make_coadd_random_radec(
+                rng=self.truth_cat_rng, coadd_wcs=coadd_wcs,
+                return_xy=True, n_gal=n_gal)
+            
         truth_cat = np.zeros(len(ra), dtype=[('number', 'i8'), ('ind', 'i8'), 
                                              ('ra',  'f8'), ('dec', 'f8'), 
                                              ('x', 'f8'), ('y', 'f8'),
@@ -237,12 +254,6 @@ class End2EndSimulation(object):
             truth_cat['a_world'] = self.simulated_catalog['a_d'][truth_cat['ind']]
             truth_cat['b_world'] = self.simulated_catalog['b_d'][truth_cat['ind']]
             truth_cat['size']    = np.sqrt(truth_cat['a_world']*truth_cat['b_world'])
-            
-        elif self.gal_kws['gal_source'] == 'simpleElliptical':
-            truth_cat['ind']     = np.zeros(len(ra))
-            truth_cat['a_world'] = 1
-            truth_cat['b_world'] = 0.75
-            truth_cat['size']    = 0.5
             
 
         truth_cat_path = get_truth_catalog_path(
