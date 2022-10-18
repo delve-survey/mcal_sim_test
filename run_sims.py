@@ -10,6 +10,7 @@ import yaml
 from band_infoing import make_band_info
 from simulating import End2EndSimulation
 from coadding import MakeSwarpCoadds
+from srcextracting import MakeSrcExtractorCat
 from true_detecting import make_true_detections
 from medsing import make_meds_files
 from run_metacal import run_metacal
@@ -119,8 +120,24 @@ def swarp(tilename, bands, output_desdata, config_file):
 
 
 @cli.command('source-extractor')
-def source_extractor():
-    click.echo('run source-extractor for a tile')
+@click.option('--tilename', type=str, required=True,
+              help='the coadd tile to simulate')
+@click.option('--bands', type=str, required=True,
+              help=('a list of bands to prep for as '
+                    'a concatnated string (e.g., "riz")'))
+@click.option('--output-desdata', type=str, required=True,
+              help='the output DESDATA directory')
+@click.option('--config-file', type=str, required=True,
+              help='the YAML config file')
+def source_extractor(tilename, bands, output_desdata, config_file):
+    with open(config_file, 'r') as fp:
+        config = yaml.load(fp, Loader=yaml.Loader)
+    SrcExtractor = MakeSrcExtractorCat(
+                                output_meds_dir=output_desdata,
+                                tilename=tilename,
+                                bands=[b for b in bands],
+                                config=config)
+    SrcExtractor.run()
 
 
 @cli.command()

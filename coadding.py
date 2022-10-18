@@ -228,7 +228,7 @@ class MakeSwarpCoadds(object):
                                         -COMBINE_TYPE WEIGHTED \
                                         -WEIGHT_IMAGE @%(list_prefix)s_swarp-%(band)s-wgt-wgt.list \
                                         -NTHREADS 8 \
-                                        -RESAMPLE_DIR %(out_dir) \
+                                        -RESAMPLE_DIR %(out_dir)s \
                                         -BLANK_BADPIXELS Y" % args
             
             
@@ -244,7 +244,7 @@ class MakeSwarpCoadds(object):
                                         -COMBINE_TYPE WEIGHTED \
                                         -WEIGHT_IMAGE @%(list_prefix)s_swarp-%(band)s-msk-wgt.list \
                                         -NTHREADS 8 \
-                                        -RESAMPLE_DIR %(out_dir) \
+                                        -RESAMPLE_DIR %(out_dir)s \
                                         -BLANK_BADPIXELS Y" % args
             
             
@@ -348,7 +348,7 @@ class MakeSwarpCoadds(object):
                                     -COMBINE_TYPE AVERAGE \
                                     -WEIGHT_IMAGE %(wgt_paths)s  \
                                     -NTHREADS 8  \
-                                    -RESAMPLE_DIR %(out_prefix) \
+                                    -RESAMPLE_DIR %(out_prefix)s \
                                     -BLANK_BADPIXELS Y" % args
         
         swarp_command_msk = "$SWARP_DIR/src/swarp %(sci_paths)s  \
@@ -364,7 +364,7 @@ class MakeSwarpCoadds(object):
                                     -COMBINE_TYPE AVERAGE \
                                     -WEIGHT_IMAGE %(msk_paths)s  \
                                     -NTHREADS 8  \
-                                    -RESAMPLE_DIR %(out_prefix) \
+                                    -RESAMPLE_DIR %(out_prefix)s \
                                     -BLANK_BADPIXELS Y" % args
         
 #         swarp_command_wgt = "$SWARP_DIR/src/swarp sci[r].fits,sci[i].fits,sci[z].fits  \
