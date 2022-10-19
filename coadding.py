@@ -300,7 +300,8 @@ class MakeSwarpCoadds(object):
                                         --tilename %(TILENAME)s \
                                         --tileid %(TILEID)s \
                                         --interp_image MSK \
-                                        --ydilate 3 " % args
+                                        --ydilate 3 \
+                                        --clobber" % args
             
             os.system(command_assemble)
 #             print(command_assemble)
@@ -416,7 +417,8 @@ class MakeSwarpCoadds(object):
                                         --tilename %(TILENAME)s \
                                         --tileid %(TILEID)s \
                                         --interp_image MSK \
-                                        --ydilate 3" % args
+                                        --ydilate 3 \
+                                        --clobber" % args
             
         os.system(command_assemble)
         print("Finished assembling coadd for det band")
