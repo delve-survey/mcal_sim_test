@@ -16,12 +16,12 @@ from files import (
     get_truth_catalog_path,
     expand_path)
 from constants import MEDSCONF
-from truthing import make_coadd_grid_radec
+from truthing import make_coadd_grid_radec, make_coadd_random_radec
 from sky_bounding import get_rough_sky_bounds, radec_to_uv
 from wcsing import get_esutil_wcs, get_galsim_wcs
 from galsiming import render_sources_for_image
 from psf_wrapper import PSFWrapper
-from realistic_galaxying import init_descwl_catalog, get_descwl_galaxy
+from realistic_galaxying import init_descwl_catalog, get_descwl_galaxy, init_cosmos_catalog, get_cosmos_galaxy
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ class End2EndSimulation(object):
         # any object within a 128 coadd pixel buffer of the edge of a CCD
         # will be rendered for that CCD
         self.bounds_buffer_uv = 128 * 0.263
-        
+       
         if self.psf_kws['type'] == 'psfex':
             self.draw_method = 'no_pixel'
         else:
@@ -140,7 +140,8 @@ class End2EndSimulation(object):
                 gal_mag = self.gal_kws['gal_mag'],
                 gal_source = self.gal_kws['gal_source'],
                 galsource_rng = self.galsource_rng,
-                simulated_catalog = self.simulated_catalog)
+                simulated_catalog = self.simulated_catalog,
+                band = band)
 
             jobs.append(joblib.delayed(_render_se_image)(
                 se_info=se_info,
@@ -215,11 +216,18 @@ class End2EndSimulation(object):
         #Set what type of galaxy counts we use
         #Either constant counts per tile
         #or draw from poisson
+        print(self.gal_kws)
+        print(self.psf_kws)
         if self.gal_kws['ngal_type'] == 'true':
             n_grid = self.gal_kws['n_grid']
+            n_gal  = n_grid**2
             
         elif self.gal_kws['ngal_type'] == 'poisson':
             n_gal  = self.truth_cat_rng.poisson(lam=self.gal_kws['n_grid']**2)
+            n_grid = int(np.sqrt(n_gal))
+        
+        else:
+            raise ValueError("Invalid option for `ngal_type`. Use 'true' or 'poisson'")
         
         
         #Set what type of grid we use
@@ -232,6 +240,8 @@ class End2EndSimulation(object):
             ra, dec, x, y = make_coadd_random_radec(
                 rng=self.truth_cat_rng, coadd_wcs=coadd_wcs,
                 return_xy=True, n_gal=n_gal)
+        else:
+            raise ValueError("Invalid option for `truth_type`. Use 'grid', 'random', 'grid-truedet', or 'random-truedet'.")
             
         truth_cat = np.zeros(len(ra), dtype=[('number', 'i8'), ('ind', 'i8'), 
                                              ('ra',  'f8'), ('dec', 'f8'), 
@@ -244,16 +254,27 @@ class End2EndSimulation(object):
         truth_cat['y'] = y
         
         if self.gal_kws['gal_source'] in ['varsize', 'varang', 'varsizeang']:
-            truth_cat['ind']  = self.galsource_rng.randint(low=0, high=len(ra), size=len(ra))
-            truth_cat['size'] = self.simulated_catalog['size'][truth_cat['ind']] #r = sqrt(a*b), q = b/a
+            truth_cat['ind']     = self.galsource_rng.randint(low=0, high=len(ra), size=len(ra))
+            truth_cat['size']    = self.simulated_catalog['size'][truth_cat['ind']] #r = sqrt(a*b), q = b/a
             truth_cat['a_world'] = truth_cat['size']/np.sqrt(self.simulated_catalog['q'][truth_cat['ind']]) # a = r/sqrt(q)
             truth_cat['b_world'] = truth_cat['size']*np.sqrt(self.simulated_catalog['q'][truth_cat['ind']]) # b = r*sqrt(q)
             
         elif self.gal_kws['gal_source'] == 'descwl':
-            truth_cat['ind'] = self.galsource_rng.randint(low=0, high=300_000, size=len(ra))
-            truth_cat['a_world'] = self.simulated_catalog['a_d'][truth_cat['ind']]
-            truth_cat['b_world'] = self.simulated_catalog['b_d'][truth_cat['ind']]
+            truth_cat['ind']     = self.galsource_rng.randint(low=0, high=300_000, size=len(ra))
+            truth_cat['a_world'] = self.simulated_catalog.cat['a_d'][truth_cat['ind']]
+            truth_cat['b_world'] = self.simulated_catalog.cat['b_d'][truth_cat['ind']]
             truth_cat['size']    = np.sqrt(truth_cat['a_world']*truth_cat['b_world'])
+            
+        elif self.gal_kws['gal_source'] == 'cosmos':
+            
+            g1 = self.simulated_catalog.cat['bdf_g1'][truth_cat['ind']]
+            g2 = self.simulated_catalog.cat['bdf_g2'][truth_cat['ind']]
+            q  = np.sqrt(g1**2 + g2**2)
+            
+            truth_cat['ind']     = self.galsource_rng.randint(low=0, high=225_000, size=len(ra))
+            truth_cat['a_world'] = 1
+            truth_cat['b_world'] = q
+            truth_cat['size']    = self.simulated_catalog.cat['bdf_hlr'][truth_cat['ind']]
             
 
         truth_cat_path = get_truth_catalog_path(
@@ -297,19 +318,12 @@ class End2EndSimulation(object):
             self.simulated_catalog.cat['a_b'] = self.simulated_catalog.cat['a_b']
             self.simulated_catalog.cat['b_b'] = self.simulated_catalog.cat['a_b']
             
-            #temporarily induce ellipticity
-#             self.simulated_catalog.cat['a_d'] = self.simulated_catalog.cat['a_d']
-#             self.simulated_catalog.cat['b_d'] = self.simulated_catalog.cat['a_d']*0.2
-#             self.simulated_catalog.cat['a_b'] = self.simulated_catalog.cat['a_b']
-#             self.simulated_catalog.cat['b_b'] = self.simulated_catalog.cat['a_b']*0.2
-            
-            #Temporarily set to zero just to ensure all galaxies have same direction
-#             simulated_catalog.cat['pa_disk'][:] = 0
-#             simulated_catalog.cat['pa_bulge'][:] = 0
-#             simulated_catalog.cat['a_d'] = self.galsource_rng.uniform(0.4, 0.8, len(simulated_catalog.cat['a_d'])) #0.2
-#             simulated_catalog.cat['b_d'] = simulated_catalog.cat['a_d'] #0.2
-#             simulated_catalog.cat['a_b'] = 0.05
-#             simulated_catalog.cat['b_b'] = 0.05
+        elif self.gal_kws['gal_source'] == 'cosmos':
+            self.simulated_catalog = init_cosmos_catalog(rng = self.galsource_rng)
+
+            #Temporarily remove all ellipticity
+            self.simulated_catalog.cat['bdf_g1'] = 0
+            self.simulated_catalog.cat['bdf_g2'] = 0
 
         return self.simulated_catalog
 
@@ -516,12 +530,13 @@ class LazySourceCat(object):
         Returns the object to be rendered from the truth catalog at
         index `ind`.
     """
-    def __init__(self, *, truth_cat, wcs, psf, g1, g2, gal_mag, gal_source, galsource_rng = None, simulated_catalog = None):
+    def __init__(self, *, truth_cat, wcs, psf, g1, g2, gal_mag, gal_source, band = None, galsource_rng = None, simulated_catalog = None):
         self.truth_cat = truth_cat
         self.wcs = wcs
         self.psf = psf
         self.g1 = g1
         self.g2 = g2
+        
         
         self.gal_source = gal_source
         self.galsource_rng = galsource_rng
@@ -529,6 +544,7 @@ class LazySourceCat(object):
         self.simulated_catalog = simulated_catalog
         
         self.gal_mag = gal_mag
+        self.band    = band
         
             
 
@@ -569,7 +585,14 @@ class LazySourceCat(object):
                                     rng  = self.galsource_rng, 
                                     data = self.simulated_catalog)
             
-        if self.gal_mag is not None:
+        elif self.gal_source == 'cosmos':
+            
+            obj = get_cosmos_galaxy(cosmos_ind = self.truth_cat['ind'][ind],
+                                    rng  = self.galsource_rng, 
+                                    data = self.simulated_catalog,
+                                    band = self.band)
+            
+        if self.gal_mag != 'custom':
             normalized_flux = 10**((30 - self.gal_mag)/2.5)
             obj = obj.withFlux(normalized_flux)
         

@@ -15,10 +15,22 @@ WLDeblendData = collections.namedtuple(
     ],
 )
 
+CosmosData = collections.namedtuple(
+    'CosmosData',
+    [
+        'cat', 'rand_rot',
+    ],
+)
+
 
 # @functools.lru_cache(maxsize=8)
 def _cached_catalog_read():
     fname = os.path.join(os.environ.get('CATSIM_DIR', '.'), 'OneDegSq.fits',)
+    return fitsio.read(fname)
+
+
+def _cached_COSMOS_catalog_read():
+    fname = os.path.join(os.environ.get('CATCOSMOS_DIR', '.'), 'input_cosmos_v4.fits',)
     return fitsio.read(fname)
 
 
@@ -142,6 +154,20 @@ def init_descwl_catalog(*, survey_bands, rng):
     )
 
 
+def init_cosmos_catalog(*, rng):
+    
+    
+    cosmos_cat = _cached_COSMOS_catalog_read()
+    
+    #If rng not supplied then don't do random rotation
+    if rng is None:
+        angle = None
+    else:
+        angle = rng.uniform(low = 0, high = 1, size = len(cosmos_cat))*360
+        
+    return CosmosData(cosmos_cat, angle)
+
+
 def get_descwl_galaxy(*, descwl_ind, rng, data):
     """Draw a galaxy from the weak lensing deblending package.
 
@@ -184,6 +210,47 @@ def get_descwl_galaxy(*, descwl_ind, rng, data):
                 data.rand_rot[descwl_ind] * galsim.degrees)
         for band in range(len(data.builders))
     ])
+
+
+def get_cosmos_galaxy(*, cosmos_ind, rng, data, band = None):
+    """Draw a galaxy from the DES_COSMOS model.
+
+    Parameters
+    ----------
+    cosmos_ind : int
+        Index of galaxy in cosmos catalog. Needed so galaxy in
+        every band/exposure looks the same.
+    rng : np.random.RandomState
+        An RNG to use for galaxy orientation
+    data : Cosmos data fitsio file
+        Namedtuple with data for making galaxies via the weak lesning
+        deblending package.
+    band : character
+        A single character containing the band of the galaxy.
+        If None then average over riz bands.
+
+    Returns
+    -------
+    gal : galsim Object
+        The galaxy as a galsim object.
+    """
+    
+    bulge_frac = data.cat['bdf_fracdev'][cosmos_ind] #Fraction of bulge to total
+    
+    if band == None:
+        flux = np.sum([data.cat['flux_%s'%i][cosmos_ind] for i in ['r', 'i', 'z']])
+        print("Why am I in here", band)
+    else:
+        flux = data.cat['flux_%s'%band][cosmos_ind]
+        
+    disk  = galsim.Exponential(flux = flux,   half_light_radius = data.cat['bdf_hlr'][cosmos_ind])
+    bulge = galsim.DeVaucouleurs(flux = flux, half_light_radius = data.cat['bdf_hlr'][cosmos_ind])
+    
+    prof  = bulge_frac*bulge + (1 - bulge_frac)*disk
+    prof  = prof.shear(g1 = data.cat['bdf_g1'][cosmos_ind], g2 = data.cat['bdf_g2'][cosmos_ind])
+    prof  = prof.rotate(data.rand_rot[cosmos_ind]*galsim.degrees)
+
+    return prof
 
 
 def get_psf_config_wldeblend(*, data):
