@@ -265,8 +265,7 @@ class End2EndSimulation(object):
             truth_cat['b_world'] = self.simulated_catalog.cat['b_d'][truth_cat['ind']]
             truth_cat['size']    = np.sqrt(truth_cat['a_world']*truth_cat['b_world'])
             
-        elif self.gal_kws['gal_source'] == 'cosmos':
-            
+        elif self.gal_kws['gal_source'] in ['cosmos', 'simplecosmos']:
             g1 = self.simulated_catalog.cat['bdf_g1'][truth_cat['ind']]
             g2 = self.simulated_catalog.cat['bdf_g2'][truth_cat['ind']]
             q  = np.sqrt(g1**2 + g2**2)
@@ -295,6 +294,14 @@ class End2EndSimulation(object):
             self.simulated_catalog = None
         
         #Same catalog generation if we want to vary size or angle
+        elif self.gal_kws['gal_source'] in ['simplecosmos']:
+            self.simulated_catalog = init_cosmos_catalog(rng = self.galsource_rng)
+            
+            self.simulated_catalog.cat['bdf_fracdev'] = 0
+            self.simulated_catalog.cat['bdf_hlr']     = np.where(self.simulated_catalog.cat['bdf_hlr'] < 0.8,
+                                                                 self.simulated_catalog.cat['bdf_hlr'], 0.8)
+            self.simulated_catalog.cat['bdf_hlr']     = np.where(self.simulated_catalog.cat['bdf_hlr'] > 0.4,
+                                                                 self.simulated_catalog.cat['bdf_hlr'], 0.4)
         
         elif self.gal_kws['gal_source'] in ['varsize', 'varang', 'varsizeang']:
             
@@ -322,8 +329,8 @@ class End2EndSimulation(object):
             self.simulated_catalog = init_cosmos_catalog(rng = self.galsource_rng)
 
             #Temporarily remove all ellipticity
-            self.simulated_catalog.cat['bdf_g1'] = 0
-            self.simulated_catalog.cat['bdf_g2'] = 0
+#             self.simulated_catalog.cat['bdf_g1'] = 0
+#             self.simulated_catalog.cat['bdf_g2'] = 0
 
         return self.simulated_catalog
 
@@ -560,6 +567,13 @@ class LazySourceCat(object):
         elif self.gal_source == 'simpleElliptical':
             obj = galsim.Exponential(half_light_radius=0.5).shear(q = 0.75, beta = 30 * galsim.degrees)
             
+        
+        elif self.gal_source == 'simplecosmos':
+            obj = get_cosmos_galaxy(cosmos_ind = self.truth_cat['ind'][ind],
+                                    rng  = self.galsource_rng, 
+                                    data = self.simulated_catalog,
+                                    band = self.band)
+            
         elif self.gal_source == 'varsize':
             rad = self.simulated_catalog['size'][self.truth_cat['ind'][ind]] #Get radius from catalog (in arcmin)
             
@@ -598,5 +612,92 @@ class LazySourceCat(object):
         
         obj = obj.shear(g1=self.g1, g2=self.g2)
         psf = self.psf.getPSF(image_pos=pos)
+        
+        return galsim.Convolve([obj, psf]), pos
+    
+    
+class LazyStarSourceCat(object):
+    """A lazy source catalog that only builds objects to be rendered as they
+    are needed. But now just for stars.
+
+    Parameters
+    ----------
+    truth_cat : structured np.array
+        The truth catalog as a structured numpy array.
+    wcs : galsim.GSFitsWCS
+        A galsim WCS instance for the image to be rendered.
+    psf : PSFWrapper
+        A PSF wrapper object to use for the PSF.
+    g1 : float
+        The shear to apply on the 1-axis.
+    g2 : float
+        The shear to apply on the 2-axis.
+
+    Methods
+    -------
+    __call__(ind)
+        Returns the object to be rendered from the truth catalog at
+        index `ind`.
+    """
+    def __init__(self, *, star_truth_cat, wcs, psf, star_mag, star_source, band = None, simulated_catalog = None, is_binary = False):
+        
+        self.truth_cat = truth_cat
+        self.wcs = wcs
+        self.psf = psf
+        
+        self.star_source = star_source
+        
+        self.simulated_catalog = simulated_catalog
+        
+        self.star_mag  = star_mag
+        self.band      = band
+        
+        self.is_binary = is_binary
+            
+
+    def __call__(self, ind):
+        
+        pos = self.wcs.toImage(galsim.CelestialCoord(
+            ra  = self.truth_cat['ra'][ind]  * galsim.degrees,
+            dec = self.truth_cat['dec'][ind] * galsim.degrees))
+        
+        
+        if self.is_binary==False:
+            
+            if self.star_mag != 'custom':
+                mag = #get mag from star catalog
+            else:
+                mag = self.mag
+
+            normalized_flux = 10**((30 - mag)/2.5)
+            
+            #Take exponential profile, shear it to cause intrinsic ellipticity in direction given by rot
+            obj = self.psf.getPSF(image_pos=pos).withFlux(normalized_flux)
+            
+        elif self.is_binary==True:
+            
+            image = galsim.ImageD(ncol=31, nrow=31, wcs=pixel_wcs)
+            
+            if self.star_mag != 'custom':
+                mag_1 = #get mag from star catalog
+                mag_2 = #get mag from star catalog
+            else:
+                mag_1 = mag_2 = self.star_mag
+
+            normalized_flux_1 = 10**((30 - mag_1)/2.5)
+            normalized_flux_2 = 10**((30 - mag_2)/2.5)
+            
+            #Take exponential profile, shear it to cause intrinsic ellipticity in direction given by rot
+            obj_1 = self.psf.getPSF(image_pos = pos).withFlux(normalized_flux_1)
+            obj_2 = self.psf.getPSF(image_pos = pos).withFlux(normalized_flux_2)
+            
+            offset_1 = #Get star position offset from center
+            offset_2 = #Get star position offset from center
+            
+            image = obj_1.drawImage(image=image, offset=offset_1) + obj_2.drawImage(image=image, offset=offset_2)
+            
+            obj   = galsim.InterpolatedImage(galsim.ImageD(image.array),
+                                             wcs=pixel_wcs,
+                                             x_interpolant=x_interpolant)
         
         return galsim.Convolve([obj, psf]), pos
