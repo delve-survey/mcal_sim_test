@@ -63,12 +63,14 @@ class End2EndSimulation(object):
     """
     def __init__(self, *,
                  seed, output_meds_dir, tilename, bands,
-                 gal_kws, psf_kws):
+                 gal_kws, psf_kws, star_kws = None):
+        
         self.output_meds_dir = output_meds_dir
         self.tilename = tilename
         self.bands = bands
-        self.gal_kws = gal_kws
-        self.psf_kws = psf_kws
+        self.gal_kws  = gal_kws
+        self.psf_kws  = psf_kws
+        self.star_kws = star_kws
         self.seed = seed
         # any object within a 128 coadd pixel buffer of the edge of a CCD
         # will be rendered for that CCD
@@ -88,7 +90,8 @@ class End2EndSimulation(object):
         self.noise_rng     = np.random.RandomState(seed=seeds[1])
         
         #one for drawing random galaxies from descwl package
-        self.galsource_rng = np.random.RandomState(seed=seeds[2])
+        self.galsource_rng  = np.random.RandomState(seed=seeds[2])
+        self.starsource_rng = np.random.RandomState(seed=seeds[3])
         
         # load the image info for each band
         self.info = {}
@@ -112,12 +115,16 @@ class End2EndSimulation(object):
         # step 2 - make the truth catalog
         truth_cat = self._make_truth_catalog()
         
+        
+        #step 3a - load simulated star catalog
+        
+        
 
         # step 3 - per band, write the images to a tile
         for band in self.bands:
-            self._run_band(band=band, truth_cat=truth_cat)
+            self._run_band(band=band, truth_cat=truth_cat, star_cat = star_cat)
 
-    def _run_band(self, *, band, truth_cat):
+    def _run_band(self, *, band, truth_cat, star_cat):
         """Run a simulation of a truth cat for a given band."""
 
         logger.info(" rendering images in band %s", band)
@@ -142,6 +149,20 @@ class End2EndSimulation(object):
                 galsource_rng = self.galsource_rng,
                 simulated_catalog = self.simulated_catalog,
                 band = band)
+            
+            if self.star_kws['stars'] == True:
+                star_src_func = LazyStarSourceCat(
+                    truth_cat=star_cat,
+                    wcs=get_galsim_wcs(
+                        image_path=se_info['image_path'],
+                        image_ext=se_info['image_ext']),
+                    psf=self._make_psf_wrapper(se_info=se_info),
+                    star_source = self.star_kws['star_source'],
+                    starsource_rng = self.starsource_rng,
+                    simulated_catalog = self.simulated_star_catalog,
+                    band = band)
+            else:
+                star_src_func = None
 
             jobs.append(joblib.delayed(_render_se_image)(
                 se_info=se_info,
@@ -152,6 +173,7 @@ class End2EndSimulation(object):
                 noise_seed=noise_seed,
                 output_meds_dir=self.output_meds_dir,
                 src_func=src_func,
+                star_src_func = star_src_func,
                 gal_kws = self.gal_kws))
 
         with joblib.Parallel(
@@ -334,9 +356,80 @@ class End2EndSimulation(object):
 
         return self.simulated_catalog
 
+    def _make_startruth_catalog(self, nstar):
+
+        """Make the star truth catalog."""
+        # always done with first band
+        band = self.bands[0]
+        coadd_wcs = get_esutil_wcs(
+            image_path=self.info[band]['image_path'],
+            image_ext=self.info[band]['image_ext'])
+
+        #For star counts we only want the true counts, everytime.
+        #so there is no poisson counting or user-changes
+        #because we want to make the images EXACTLY like reality.
+        
+        ra, dec, x, y = make_coadd_random_radec(
+            rng=self.truth_cat_rng, coadd_wcs=coadd_wcs,
+            return_xy=True, n_gal=n_star)
+            
+        truth_cat = np.zeros(len(ra), dtype=[('number', 'i8'), ('ind', 'i8'), 
+                                             ('ra',  'f8'), ('dec', 'f8'), 
+                                             ('x', 'f8'), ('y', 'f8'),
+                                             ('a_world', 'f8'), ('b_world', 'f8'), ('size', 'f8')])
+
+        truth_cat['number'] = np.arange(len(ra)).astype(np.int64) + 1
+        truth_cat['ra']  = ra
+        truth_cat['dec'] = dec
+        truth_cat['x'] = x
+        truth_cat['y'] = y
+        
+        if self.star_kws['star_source'] in ['delve_dr2']:
+            truth_cat['ind'] = self.starsource_rng.randint(low=0, high=len(ra), size=len(ra))
+            
+        elif self.star_kws['star_source'] in ['lsst_sim']:
+            truth_cat['ind'] = self.starsource_rng.randint(low=0, high=300_000, size=len(ra))
+        
+        #We don't write the star catalog anywhere because we don't really use it as a data product
+        #in the analysis.
+        
+        return truth_cat
+    
+    
+    def _make_starsim_catalog(self):
+        
+        """Makes sim catalog"""
+        
+        #Load full catalogs
+        if self.star_kws['gal_source'] in ['delve_dr2']:
+            self.simulated_star_catalog = None #FIX. INSERT CATALOG HERE
+        
+        if self.star_kws['gal_source'] in ['lsst_sim']:
+#             self.simulated_star_catalog = init_lsst_sim_catalog(rng = self.starsource_rng)
+
+            star_catalog, binary_catalog = init_lsst_sim_catalog(rng = self.starsource_rng)
+
+            star_inds   = _cut_tuth_cat_to_se_image(truth_cat=star_catalog, se_info=self.info, bounds_buffer_uv=self.bounds_buffer_uv)
+            binary_inds = _cut_tuth_cat_to_se_image(truth_cat=star_catalog, se_info=self.info, bounds_buffer_uv=self.bounds_buffer_uv)
+            
+            star_catalog   = star_catalog[star_inds]
+            binary_catalog = binary_catalog[binary_inds]
+            
+            binarystar1_catalog = None#
+            binarystar2_catalog = None#
+            
+            self.simulated_catalog = np.concatenate([star_catalog, binarystar1_catalog, binarystar2_catalog])
+        
+        #For LSST sim ONLY
+        #Then do some hacking so the binary catalog is upsampled
+        #and then is split + concatenated into full catalog
+        #so in the end we have a catalog of just "single" stars
+        
+        return self.simulated_star_catalog
+
 def _render_se_image(
         *, se_info, band, truth_cat, bounds_buffer_uv,
-        draw_method, noise_seed, output_meds_dir, src_func, gal_kws):
+        draw_method, noise_seed, output_meds_dir, src_func, gal_kws, star_src_func):
     """Render an SE image.
 
     This function renders a full image and writes it to disk.
@@ -369,6 +462,8 @@ def _render_se_image(
     gal_kws : dict
         Dictionary containing the keywords passed to the
         the simulating code
+    star_src_func : callable
+        Similar to src_func, but for stars.
     """
 
     # step 1 - get the set of good objects for the CCD
@@ -385,6 +480,18 @@ def _render_se_image(
         band=band,
         src_func=src_func,
         draw_method=draw_method)
+    
+    # step 2a - render the star objects
+    if star_src_func is not None:
+        star_im = _render_all_objects(
+                    msk_inds=msk_inds,
+                    truth_cat=truth_cat,
+                    se_info=se_info,
+                    band=band,
+                    src_func=star_src_func,
+                    draw_method=draw_method)
+        
+        im += sim_im
 
     # step 3 - add bkg and noise
     # also removes the zero point
