@@ -384,8 +384,8 @@ class End2EndSimulation(object):
             star_upsample   = 1000 #factor because we didn't download all stars
             binary_upsample = 10 * 100 #factor because we didn't download all binaries, and only 1/10th of binaries were simulated
             
-            star_num    = star_upsample   * len(star_inds)   * (1 - self.star_kws['f_bin'])
-            binary_num  = binary_upsample * len(binary_inds) * self.star_kws['f_bin']
+            star_num    = self.star_kws['upscale'] * star_upsample   * len(star_inds)   * (1 - self.star_kws['f_bin'])
+            binary_num  = self.star_kws['upscale'] * binary_upsample * len(binary_inds) * self.star_kws['f_bin']
             star_inds   = star_inds[self.starsource_rng.randint(len(star_inds),     size = int(star_num))]
             binary_inds = binary_inds[self.starsource_rng.randint(len(binary_inds), size = int(binary_num))]
             
