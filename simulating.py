@@ -161,6 +161,7 @@ class End2EndSimulation(object):
                         image_path=se_info['image_path'],
                         image_ext=se_info['image_ext']),
                     psf=self._make_psf_wrapper(se_info=se_info),
+                    star_mag = self.star_kws['star_mag'],
                     star_source = self.star_kws['star_source'],
                     starsource_rng = self.starsource_rng,
                     simulated_catalog = self.star_simulated_catalog,
@@ -171,13 +172,13 @@ class End2EndSimulation(object):
             jobs.append(joblib.delayed(_render_se_image)(
                 se_info=se_info,
                 band=band,
-                gal_truth_cat=self.galaxy_truth_catalog,
+                galaxy_truth_cat=self.galaxy_truth_catalog,
                 star_truth_cat=self.star_truth_catalog,
                 bounds_buffer_uv=self.bounds_buffer_uv,
                 draw_method=self.draw_method,
                 noise_seed=noise_seed,
                 output_meds_dir=self.output_meds_dir,
-                src_func=galaxy_src_func,
+                galaxy_src_func=galaxy_src_func,
                 star_src_func = star_src_func,
                 gal_kws = self.gal_kws))
 
@@ -371,21 +372,22 @@ class End2EndSimulation(object):
         coadd_wcs = get_esutil_wcs(
             image_path=self.info[band]['image_path'],
             image_ext=self.info[band]['image_ext'])
+        coadd_info = self.info[band]
         
-        if self.star_kws['gal_source'] in ['lsst_sim']:
+        if self.star_kws['star_source'] in ['lsst_sim']:
 
             star_catalog, binary_catalog = init_lsst_starsim_catalog(rng = self.starsource_rng)
 
-            star_inds   = _cut_tuth_cat_to_se_image(truth_cat=star_catalog,   se_info=self.info, bounds_buffer_uv=self.bounds_buffer_uv)
-            binary_inds = _cut_tuth_cat_to_se_image(truth_cat=binary_catalog, se_info=self.info, bounds_buffer_uv=self.bounds_buffer_uv)
+            star_inds   = _cut_tuth_cat_to_se_image(truth_cat=star_catalog,   se_info=coadd_info, bounds_buffer_uv=self.bounds_buffer_uv)
+            binary_inds = _cut_tuth_cat_to_se_image(truth_cat=binary_catalog, se_info=coadd_info, bounds_buffer_uv=self.bounds_buffer_uv)
             
             star_upsample   = 1000 #factor because we didn't download all stars
             binary_upsample = 10 * 100 #factor because we didn't download all binaries, and only 1/10th of binaries were simulated
             
             star_num    = star_upsample   * len(star_inds)   * (1 - self.star_kws['f_bin'])
             binary_num  = binary_upsample * len(binary_inds) * self.star_kws['f_bin']
-            star_inds   = star_inds[self.starsource_rng.random(len(star_inds),     int(star_num))]
-            binary_inds = binary_inds[self.starsource_rng.random(len(binary_inds), int(binary_num))]
+            star_inds   = star_inds[self.starsource_rng.randint(len(star_inds),     size = int(star_num))]
+            binary_inds = binary_inds[self.starsource_rng.randint(len(binary_inds), size = int(binary_num))]
             
             n_stars = len(star_inds)
             n_binar = len(binary_inds)
@@ -402,7 +404,7 @@ class End2EndSimulation(object):
             #Offsets between two stars in binary system. 
             #Generated in flat-sky. Convert to curved sky for ra_offset. Dec offset is fine
             angles = self.starsource_rng.random(len(binary_inds))*np.pi
-            sep    = binary_catalog['a']
+            sep    = binary_catalog['a']*2.25461e-8 / 10**(1 + binary_catalog['mu0']/5) #convert Rsun to pc
             cos    = np.cos(angles) 
             sin    = np.sin(angles)
             
@@ -518,7 +520,7 @@ def _render_se_image(
                     src_func=star_src_func,
                     draw_method=draw_method)
         
-        im += sim_im
+        im += star_im
 
     # step 3 - add bkg and noise
     # also removes the zero point
@@ -773,7 +775,7 @@ class LazyStarSourceCat(object):
         Returns the object to be rendered from the truth catalog at
         index `ind`.
     """
-    def __init__(self, *, star_truth_cat, wcs, psf, star_mag, star_source, band = None, simulated_catalog = None):
+    def __init__(self, *, truth_cat, wcs, psf, star_mag, star_source, starsource_rng = None, band = None, simulated_catalog = None):
         
         self.truth_cat = truth_cat
         self.wcs = wcs
@@ -785,6 +787,8 @@ class LazyStarSourceCat(object):
         
         self.star_mag  = star_mag
         self.band      = band
+        
+        self.starsource_rng = starsource_rng
             
 
     def __call__(self, ind):
@@ -793,8 +797,8 @@ class LazyStarSourceCat(object):
                                                      dec = self.truth_cat['dec'][ind] * galsim.degrees))
         
         
-        if self.star_mag != 'custom':
-            mag = self.truth_cat['m_%s'%self.band][ind]
+        if self.star_mag == 'custom':
+            mag = self.simulated_catalog['mag_%s'%self.band][ind]
         else:
             mag = self.star_mag
 
@@ -803,4 +807,4 @@ class LazyStarSourceCat(object):
         #Take exponential profile, shear it to cause intrinsic ellipticity in direction given by rot
         obj = self.psf.getPSF(image_pos=pos).withFlux(normalized_flux)
         
-        return galsim.Convolve([obj, psf]), pos
+        return obj, pos

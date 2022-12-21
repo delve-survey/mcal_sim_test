@@ -73,6 +73,7 @@ def galsim(tilename, bands, output_desdata, seed, config_file):
         tilename=tilename,
         bands=[b for b in bands],
         gal_kws=config['gal_kws'],
+        star_kws=config['star_kws'],
         psf_kws=config['psf_kws'])
     sim.run()
 
