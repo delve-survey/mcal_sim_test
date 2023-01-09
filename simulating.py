@@ -330,7 +330,13 @@ class End2EndSimulation(object):
                                                                  self.simulated_catalog.cat['bdf_hlr'], 0.8)
             self.simulated_catalog.cat['bdf_hlr']     = np.where(self.simulated_catalog.cat['bdf_hlr'] > 0.4,
                                                                  self.simulated_catalog.cat['bdf_hlr'], 0.4)
-        
+            
+            #Just to make them circular
+            if True: #self.gal_kws['circular']:
+                #print("IM A CIRCLE")
+                self.simulated_catalog.cat['bdf_g1'] = 0  
+                self.simulated_catalog.cat['bdf_g2'] = 0
+
         elif self.gal_kws['gal_source'] in ['varsize', 'varang', 'varsizeang']:
             
             #Simulate 500,000 objects. We won't use that many per tile.

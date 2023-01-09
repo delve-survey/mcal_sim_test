@@ -6,6 +6,7 @@ from files import (get_band_info_file, make_dirs_for_file,
                    get_swarp_files_path, get_nwgint_path)
 from des_info import add_extra_des_coadd_tile_info
 import fitsio
+import shutil
 from constants import MEDSCONF, MAGZP_REF
 
 TMP_DIR = os.environ['TMPDIR']
@@ -38,11 +39,17 @@ class MakeSrcExtractorCat(object):
         
         for band in self.bands:
             coadd_file = self.info[band]['image_path'].replace(TMP_DIR, self.output_meds_dir).replace('.fz', '')
-            seg_file   = self.info[band]['seg_path']#.replace(TMP_DIR, self.output_meds_dir)
+            seg_file   = self.info[band]['seg_path'].replace(TMP_DIR, self.output_meds_dir)
             cat_file   = self.info[band]['cat_path'].replace(TMP_DIR, self.output_meds_dir)
             
             make_dirs_for_file(cat_file)
+            make_dirs_for_file(seg_file)
+            
+            #Copy segmentation file over
+            #Needed for meds-making code
+            shutil.copy(self.info[band]['seg_path'], seg_file)
 
+            #Setup args
             args = {'DET_COADD' : os.path.join(self.swarp_path, self.tilename + '_det.fits'),
                     'TILENAME'  : self.tilename,
                     'BAND'      : band,
@@ -58,7 +65,7 @@ class MakeSrcExtractorCat(object):
                                         -c $DESDM_CONFIG/Y6A1_v1_sex.config \
                                         -CHECKIMAGE_TYPE SEGMENTATION \
                                         -CHECKIMAGE_NAME %(SEG)s \
-                                        -PARAMETERS_NAME $DESDM_CONFIG/Y6A1_v1_srcex.param_diskonly \
+                                        -PARAMETERS_NAME $DESDM_CONFIG/Y6A1_v1_srcex.param_diskonly_old \
                                         -MAG_ZEROPOINT 30 \
                                         -FILTER_NAME $DESDM_CONFIG/Y6A1_v1_gauss_3.0_7x7.conv \
                                         -CATALOG_NAME %(CAT)s \

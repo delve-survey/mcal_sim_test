@@ -92,7 +92,7 @@ def true_detection(tilename, bands, output_desdata, config_file):
     with open(config_file, 'r') as fp:
         config = yaml.load(fp, Loader=yaml.Loader)
         
-    if config['gal_kws'] in ['grid-truedet', 'random-truedet']:
+    if config['gal_kws']['truth_type'] in ['grid-truedet', 'random-truedet']:
         make_true_detections(
             tilename=tilename,
             bands=[b for b in bands],
@@ -115,7 +115,7 @@ def swarp(tilename, bands, output_desdata, config_file):
     with open(config_file, 'r') as fp:
         config = yaml.load(fp, Loader=yaml.Loader)
         
-    if config['gal_kws'] not in ['grid-truedet', 'random-truedet']:
+    if config['gal_kws']['truth_type'] not in ['grid-truedet', 'random-truedet']:
         coadd = MakeSwarpCoadds(
             output_meds_dir=output_desdata,
             tilename=tilename,
@@ -138,7 +138,7 @@ def source_extractor(tilename, bands, output_desdata, config_file):
     with open(config_file, 'r') as fp:
         config = yaml.load(fp, Loader=yaml.Loader)
         
-    if config['gal_kws'] not in ['grid-truedet', 'random-truedet']:
+    if config['gal_kws']['truth_type'] not in ['grid-truedet', 'random-truedet']:
         SrcExtractor = MakeSrcExtractorCat(
                                     output_meds_dir=output_desdata,
                                     tilename=tilename,
