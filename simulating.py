@@ -326,14 +326,12 @@ class End2EndSimulation(object):
             self.simulated_catalog = init_cosmos_catalog(rng = self.galsource_rng)
             
             self.simulated_catalog.cat['bdf_fracdev'] = 0
-            self.simulated_catalog.cat['bdf_hlr']     = np.where(self.simulated_catalog.cat['bdf_hlr'] < 0.8,
-                                                                 self.simulated_catalog.cat['bdf_hlr'], 0.8)
-            self.simulated_catalog.cat['bdf_hlr']     = np.where(self.simulated_catalog.cat['bdf_hlr'] > 0.4,
-                                                                 self.simulated_catalog.cat['bdf_hlr'], 0.4)
+            self.simulated_catalog.cat['bdf_hlr']     = np.clip(self.simulated_catalog.cat['bdf_hlr'],
+                                                                a_min = self.gal_kws['size_min'],
+                                                                a_max = self.gal_kws['size_max'])
             
             #Just to make them circular
-            if True: #self.gal_kws['circular']:
-                #print("IM A CIRCLE")
+            if self.gal_kws['circular']:
                 self.simulated_catalog.cat['bdf_g1'] = 0  
                 self.simulated_catalog.cat['bdf_g2'] = 0
 
@@ -348,23 +346,28 @@ class End2EndSimulation(object):
             cat['q']       = self.galsource_rng.uniform(self.gal_kws['q_min'],    self.gal_kws['q_max'],    len(cat)) #dimensionless
             cat['ang_rot'] = self.galsource_rng.uniform(0, 360, len(cat)) #in degrees
 
+            if self.gal_kws['circular']:
+                cat['q'] = 1
+                
             self.simulated_catalog = cat
             
         elif self.gal_kws['gal_source'] == 'descwl':
             self.simulated_catalog = init_descwl_catalog(survey_bands = "des-riz", rng = self.galsource_rng)
 
-            #Temporarily remove all ellipticity
-            self.simulated_catalog.cat['a_d'] = self.simulated_catalog.cat['a_d']
-            self.simulated_catalog.cat['b_d'] = self.simulated_catalog.cat['a_d']
-            self.simulated_catalog.cat['a_b'] = self.simulated_catalog.cat['a_b']
-            self.simulated_catalog.cat['b_b'] = self.simulated_catalog.cat['a_b']
+            if self.gal_kws['circular']:
+                #Temporarily remove all ellipticity
+                self.simulated_catalog.cat['a_d'] = self.simulated_catalog.cat['a_d']
+                self.simulated_catalog.cat['b_d'] = self.simulated_catalog.cat['a_d']
+                self.simulated_catalog.cat['a_b'] = self.simulated_catalog.cat['a_b']
+                self.simulated_catalog.cat['b_b'] = self.simulated_catalog.cat['a_b']
             
         elif self.gal_kws['gal_source'] == 'cosmos':
             self.simulated_catalog = init_cosmos_catalog(rng = self.galsource_rng)
 
-            #Temporarily remove all ellipticity
-#             self.simulated_catalog.cat['bdf_g1'] = 0
-#             self.simulated_catalog.cat['bdf_g2'] = 0
+            if self.gal_kws['circular']:
+                #Temporarily remove all ellipticity
+                self.simulated_catalog.cat['bdf_g1'] = 0
+                self.simulated_catalog.cat['bdf_g2'] = 0
 
         return self.simulated_catalog
     
@@ -410,7 +413,7 @@ class End2EndSimulation(object):
             #Offsets between two stars in binary system. 
             #Generated in flat-sky. Convert to curved sky for ra_offset. Dec offset is fine
             angles = self.starsource_rng.random(len(binary_inds))*np.pi
-            sep    = binary_catalog['a']*2.25461e-8 / 10**(1 + binary_catalog['mu0']/5) #convert Rsun to pc
+            sep    = (binary_catalog['a']*2.25461e-8) / (10**(1 + binary_catalog['mu0']/5)) * (180/np.pi) #conv. Rsun to pc, then rad to deg
             cos    = np.cos(angles) 
             sin    = np.sin(angles)
             

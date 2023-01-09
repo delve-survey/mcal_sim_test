@@ -17,6 +17,8 @@ gal_kws:
   truth_type: grid
   ngal_type: "true"
 
+  circular: True
+
 star_kws:
   stars: True
   star_source: lsst_sim
