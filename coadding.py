@@ -304,8 +304,12 @@ class MakeSwarpCoadds(object):
                                         --clobber" % args
             
             os.system(command_assemble)
-#             print(command_assemble)
             print("Finished assembling coadd for %s band" % band)
+    
+            #Compress because this is what the meds-making pipeline expects
+            os.system('fpack %(out_prefix)s.fits' % args)
+
+            print("Finished compressing coadd for %s band" % band)
                         
         return 1
         

@@ -55,6 +55,7 @@ def run_metacal(*, tilename, output_meds_dir, bands, seed, mcal_config):
 
     seeds = np.random.RandomState(seed=seed).randint(1, 2**30, size=n_chunks)
 
+    
     jobs = []
     for chunk in range(n_chunks):
         start = chunk * n_obj_per_chunk

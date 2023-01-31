@@ -291,10 +291,18 @@ def _make_meds_input_data_struct(
     """
     dtype = meds.util.get_meds_input_dtype(extra_fields=[('number', 'i8')])
     input_data = np.zeros(len(cat), dtype=dtype)
-    input_data['id'] = cat['number']
-    input_data['number'] = cat['number']
-    input_data['ra'] = cat['alpha_j2000']
-    input_data['dec'] = cat['delta_j2000']
+
+    try:
+        input_data['id'] = cat['number']
+        input_data['number'] = cat['number']
+        input_data['ra'] = cat['alpha_j2000']
+        input_data['dec'] = cat['delta_j2000']
+    except:
+        input_data['id'] = cat['number'.upper()]
+        input_data['number'] = cat['number'.upper()]
+        input_data['ra'] = cat['alpha_j2000'.upper()]
+        input_data['dec'] = cat['delta_j2000'.upper()]
+ 
     input_data['box_size'] = _get_box_sizes(
         cat=cat,
         allowed_box_sizes=allowed_box_sizes,
@@ -332,8 +340,12 @@ def _get_box_sizes(
     sigma_size = get_sigma_size(cat=cat, sigma_fac=sigma_fac)
 
     # now do row and col sizes
-    row_size = cat['ymax_image'] - cat['ymin_image'] + 1
-    col_size = cat['xmax_image'] - cat['xmin_image'] + 1
+    try:
+        row_size = cat['ymax_image'] - cat['ymin_image'] + 1
+        col_size = cat['xmax_image'] - cat['xmin_image'] + 1
+    except:
+        row_size = cat['ymax_image'.upper()] - cat['ymin_image'.upper()] + 1
+        col_size = cat['xmax_image'.upper()] - cat['xmin_image'.upper()] + 1
 
     # get max of all three
     box_size = np.vstack(
@@ -374,9 +386,13 @@ def get_sigma_size(*, cat, sigma_fac):
     """
 
     fwhm_fac = 2*np.sqrt(2*np.log(2))
-
-    ellipticity = 1.0 - cat['b_world'] / cat['a_world']
-    sigma = cat['flux_radius'] * 2.0 / fwhm_fac
+    
+    try:
+        ellipticity = 1.0 - cat['b_world'] / cat['a_world']
+        sigma = cat['flux_radius'] * 2.0 / fwhm_fac
+    except:
+        ellipticity = 1.0 - cat['b_world'.upper()] / cat['a_world'.upper()]
+        sigma = cat['flux_radius'.upper()] * 2.0 / fwhm_fac 
     drad = sigma * sigma_fac
     drad = drad * (1.0 + ellipticity)
     drad = np.ceil(drad)
