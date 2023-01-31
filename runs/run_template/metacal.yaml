@@ -46,4 +46,4 @@ custom:
     maxbadfrac: 0.1
     goodfrac: True
     symmetrize_mask: True
-    Nexp_max: 10
+    Nexp_max: 20
