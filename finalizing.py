@@ -7,22 +7,21 @@ import shutil
 import yaml
 import os
 
-def finalize_files(tile, bands, seed):
+def finalize_files(tilename, bands, seed):
     
     for b in bands:
-        move_SrcExtractor_cat(tile, b, seed)
-        move_meds(tile, b, seed)
+        move_SrcExtractor_cat(tilename, b, seed)
+        move_meds(tilename, b, seed)
         
-    move_metacal_cat(tile, seed)
-    clean_up_directory()
+    move_metacal_cat(tilename, seed)
+    #clean_up_directory()
         
 
 #Helper functions to run the above cleanup/re-organization code
 def move_SrcExtractor_cat(tile, band, seed):
     
     for mode in ['plus', 'minus']:
-        args = {'name' : name,
-                'seed' : seed,
+        args = {'seed' : seed,
                 'mode' : mode,
                 'tile' : tile,
                 'band' : band}
@@ -45,22 +44,22 @@ def move_SrcExtractor_cat(tile, band, seed):
 def move_metacal_cat(tile, seed):
     
     for mode in ['plus', 'minus']:
-        args = {'name' : name,
-                'seed' : seed,
+        args = {'seed' : seed,
                 'mode' : mode,
                 'tile' : tile,
                 'band' : band}
     
         cat_path = "$output/metacal/y3v02/%(tile)s_metacal.fits" 
         new_path = "$MCAL_DIR/%(name)s/metacal_%s(tile)_seed%(seed)d_g%(mode).fits"
-    
+        
+        shutil.move(meds_path, new_path)
+         
     return True
 
 def move_meds(tile, band, seed):
     
     for mode in ['plus', 'minus']:
-        args = {'name' : name,
-                'seed' : seed,
+        args = {'seed' : seed,
                 'mode' : mode,
                 'tile' : tile,
                 'band' : band}

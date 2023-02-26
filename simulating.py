@@ -282,13 +282,13 @@ class End2EndSimulation(object):
         truth_cat['y'] = y
         
         if self.gal_kws['gal_source'] in ['varsize', 'varang', 'varsizeang']:
-            truth_cat['ind']     = self.galsource_rng.randint(low=0, high=len(ra), size=len(ra))
+            truth_cat['ind']     = self.galsource_rng.randint(low=0, high=len(self.simulated_catalog), size=len(ra))
             truth_cat['size']    = self.simulated_catalog['size'][truth_cat['ind']] #r = sqrt(a*b), q = b/a
             truth_cat['a_world'] = truth_cat['size']/np.sqrt(self.simulated_catalog['q'][truth_cat['ind']]) # a = r/sqrt(q)
             truth_cat['b_world'] = truth_cat['size']*np.sqrt(self.simulated_catalog['q'][truth_cat['ind']]) # b = r*sqrt(q)
             
         elif self.gal_kws['gal_source'] == 'descwl':
-            truth_cat['ind']     = self.galsource_rng.randint(low=0, high=300_000, size=len(ra))
+            truth_cat['ind']     = self.galsource_rng.randint(low=0, high=len(self.simulated_catalog.cat), size=len(ra))
             truth_cat['a_world'] = self.simulated_catalog.cat['a_d'][truth_cat['ind']]
             truth_cat['b_world'] = self.simulated_catalog.cat['b_d'][truth_cat['ind']]
             truth_cat['size']    = np.sqrt(truth_cat['a_world']*truth_cat['b_world'])
@@ -298,7 +298,7 @@ class End2EndSimulation(object):
             g2 = self.simulated_catalog.cat['bdf_g2'][truth_cat['ind']]
             q  = np.sqrt(g1**2 + g2**2)
             
-            truth_cat['ind']     = self.galsource_rng.randint(low=0, high=225_000, size=len(ra))
+            truth_cat['ind']     = self.galsource_rng.randint(low=0, high=len(self.simulated_catalog.cat), size=len(ra))
             truth_cat['a_world'] = 1
             truth_cat['b_world'] = q
             truth_cat['size']    = self.simulated_catalog.cat['bdf_hlr'][truth_cat['ind']]
@@ -324,6 +324,11 @@ class End2EndSimulation(object):
         #Same catalog generation if we want to vary size or angle
         elif self.gal_kws['gal_source'] in ['simplecosmos']:
             self.simulated_catalog = init_cosmos_catalog(rng = self.galsource_rng)
+            
+            Mask = ((self.simulated_catalog.cat['mag_i'] > self.gal_kws['mag_min']) & 
+                    (self.simulated_catalog.cat['mag_i'] < self.gal_kws['mag_max']))
+            
+            self.simulated_catalog = self.simulated_catalog._replace(cat = self.simulated_catalog.cat[Mask])
             
             self.simulated_catalog.cat['bdf_fracdev'] = 0
             self.simulated_catalog.cat['bdf_hlr']     = np.clip(self.simulated_catalog.cat['bdf_hlr'],
@@ -363,6 +368,11 @@ class End2EndSimulation(object):
             
         elif self.gal_kws['gal_source'] == 'cosmos':
             self.simulated_catalog = init_cosmos_catalog(rng = self.galsource_rng)
+            
+            Mask = ((self.simulated_catalog.cat['mag_i'] > self.gal_kws['mag_min']) & 
+                    (self.simulated_catalog.cat['mag_i'] < self.gal_kws['mag_max']))
+            
+            self.simulated_catalog = self.simulated_catalog._replace(cat = self.simulated_catalog.cat[Mask])
 
             if self.gal_kws['circular']:
                 #Temporarily remove all ellipticity
@@ -438,6 +448,11 @@ class End2EndSimulation(object):
             binarystar2_catalog['dec']   = dec[n_stars:] + dec_offset
             
             simulated_cat = np.concatenate([star_catalog, binarystar1_catalog, binarystar2_catalog])
+            
+            Mask = ((simulated_cat['mag_i'] > self.star_kws['mag_min']) & 
+                    (simulated_cat['mag_i'] < self.star_kws['mag_max']))
+            
+            simulated_cat = simulated_cat[Mask]
         
         #NOW DO TRUTH CATALOG PART
         truth_cat = np.zeros(len(simulated_cat), dtype=[('number', 'i8'), ('ind', 'i8'), 
