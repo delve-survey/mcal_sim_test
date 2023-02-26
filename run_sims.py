@@ -14,6 +14,7 @@ from srcextracting import MakeSrcExtractorCat
 from true_detecting import make_true_detections
 from medsing import make_meds_files
 from run_metacal import run_metacal
+from finalizing import finalize_files
 
 for lib in ['matts_misc.simple_des_y3_sims']:
     lgr = logging.getLogger(lib)
@@ -194,6 +195,20 @@ def metacal(tilename, bands, output_desdata, seed, metacal_config_file):
         seed=seed,
         mcal_config=mcal_config)
 
+    
+@cli.command()
+@click.option('--tilename', type=str, required=True,
+              help='the coadd tile to simulate')
+@click.option('--bands', type=str, required=True,
+              help=('a list of bands to simulate as '
+                    'a concatnated string (e.g., "riz")'))
+@click.option('--seed', type=int, required=True,
+              help='the base RNG seed')
+def finalize(tilename, bands, seed):
+    finalize_files(
+        tilename=tilename,
+        bands=[b for b in bands],
+        seed=seed)
 
 if __name__ == '__main__':
     cli()
