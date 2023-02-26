@@ -4,15 +4,21 @@ survey_kws:
 gal_kws:
   type: exp
   gal_mag: 17
-  gal_source: simplecosmos
+  gal_source: simple
+  
   size_min: 0.3
   size_max: 0.8
   q_min: 0.5
   q_max: 1.0
+  mag_min: -30
+  mag_max: 25.5
+  
   Mask: True
-  n_grid: 5
+  n_grid: 200
   g1: {{ g1 }}
   g2: 0.0
+  
+  
 
   truth_type: grid
   ngal_type: "true"
@@ -24,7 +30,10 @@ star_kws:
   star_source: lsst_sim
   f_bin: 0.4
   star_mag: 4
-  upscale: 100
+  upscale: 1
+  
+  mag_min: -30
+  mag_max: 25.5
      
 psf_kws:
   type: psfex_deconvolved
