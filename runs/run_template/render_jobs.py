@@ -3,6 +3,7 @@ import jinja2
 import yaml
 import pandas as pd
 import argparse
+import numpy as np
 
 my_parser = argparse.ArgumentParser()
 
@@ -21,7 +22,7 @@ print('-----------------------------')
 TILENAME_SEED = 42
 NUM_OF_TILES  = 40
 tiles = pd.read_csv(os.environ['RUN_DIR'] + '/data/Tilelist_DR3_1_1.csv')
-tilenames = list(np.random.default_rng(TILENAME_SEED).choice(tiles['TILENAME'].values, size = 20, replace = False))
+tilenames = list(np.random.default_rng(TILENAME_SEED).choice(tiles['TILENAME'].values, size = NUM_OF_TILES, replace = False))
 
 
 if __name__ == '__main__':

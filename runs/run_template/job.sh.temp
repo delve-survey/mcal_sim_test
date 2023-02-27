@@ -16,14 +16,8 @@ if [ "$USER" == "dhayaa" ]
 then
     cd /home/dhayaa/Desktop/DECADE/mcal_sim_test/
     module load python
-    conda activate shear
-    source /home/dhayaa/Desktop/DECADE/bash_profile.sh
-fi
-
-if [ "$USER" == "secco"  ]
-then
-    cd /home/secco/SHEAR/mcal_sim_test/
-    source lucas_env/SOURCE_LUCAS
+    conda activate shearDM
+    source /home/dhayaa/Desktop/DECADE/mcal_sim_test/bash_profile.sh
 fi
 
 
@@ -41,6 +35,7 @@ tilename="{{ tilename }}"
 NOW=$( date '+%H:%M:%S' )
 echo "Starting galsim stage at $NOW"
 
+
 python run_sims.py \
   galsim \
   --tilename="$tilename" \
@@ -50,7 +45,30 @@ python run_sims.py \
   --seed="{{ seed_galsim }}"
 
 NOW=$( date '+%H:%M:%S' )
-echo "Completed galsim and starting true-detection at $NOW"
+echo "Completed galsim and starting swarp at $NOW"
+
+
+python run_sims.py \
+  swarp \
+  --tilename="$tilename" \
+  --bands="$bands" \
+  --output-desdata="$output" \
+  --config-file="runs/{{ model_name }}/config_{{ plus_or_minus }}.yaml"
+
+NOW=$( date '+%H:%M:%S' )
+echo "Completed swarp and starting source-extractor at $NOW"
+
+
+python run_sims.py \
+  source-extractor \
+  --tilename="$tilename" \
+  --bands="$bands" \
+  --output-desdata="$output" \
+  --config-file="runs/{{ model_name }}/config_{{ plus_or_minus }}.yaml"
+
+NOW=$( date '+%H:%M:%S' )
+echo "Completed coadding and starting source-extractor at $NOW"
+
 
 python run_sims.py \
   true-detection \
@@ -62,6 +80,7 @@ python run_sims.py \
 NOW=$( date '+%H:%M:%S' )
 echo "Completed true-detection and starting meds at $NOW"
 
+
 python run_sims.py \
   meds \
   --tilename="$tilename" \
@@ -69,9 +88,9 @@ python run_sims.py \
   --output-desdata="$output" \
   --config-file="runs/{{ model_name }}/config_{{ plus_or_minus }}.yaml" \
   --meds-config-file="runs/{{ model_name }}/meds.yaml"
-
 NOW=$( date '+%H:%M:%S' )
 echo "Completed meds and starting mcal at $NOW"
+
 
 python run_sims.py \
   metacal \
@@ -82,12 +101,14 @@ python run_sims.py \
   --metacal-config-file="runs/{{ model_name }}/metacal.yaml"
 
 NOW=$( date '+%H:%M:%S' )
-echo "Completed mcal and moving meds + mcal output to $MCAL_DIR/{{ model_name }} at $NOW"
+echo "Completed mcal and starting finalize at $NOW"
 
-mv "$output/metacal/y3v02/{{ tilename }}_metacal.fits" "/project2/chihway/dhayaa/DECADE/Tests/{{ model_name }}/metacal_{{ tilename }}_seed{{ seed_galsim }}_g{{ plus_or_minus }}.fits"
 
-mv "$output/meds/y3v02/{{ tilename }}/{{ tilename }}_r_meds-y3v02.fits.fz" "$MCAL_DIR/{{ model_name }}/meds_{{ tilename }}_g{{ plus_or_minus }}_r-y3v02.fits.fz"
-mv "$output/meds/y3v02/{{ tilename }}/{{ tilename }}_i_meds-y3v02.fits.fz" "$MCAL_DIR/{{ model_name }}/meds_{{ tilename }}_g{{ plus_or_minus }}_i-y3v02.fits.fz"
-mv "$output/meds/y3v02/{{ tilename }}/{{ tilename }}_z_meds-y3v02.fits.fz" "$MCAL_DIR/{{ model_name }}/meds_{{ tilename }}_g{{ plus_or_minus }}_z-y3v02.fits.fz"
-
-#rm -rf $output
+python run_sims.py \
+  finalize \
+  --tilename="$tilename" \
+  --bands="$bands" \
+  --output-desdata="$output"
+  
+NOW=$( date '+%H:%M:%S' )
+echo "Finished moving meds, mcal, SrcExtractor output to $MCAL_DIR/{{ model_name }} at $NOW"
