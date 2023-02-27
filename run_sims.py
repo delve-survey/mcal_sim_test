@@ -202,13 +202,13 @@ def metacal(tilename, bands, output_desdata, seed, metacal_config_file):
 @click.option('--bands', type=str, required=True,
               help=('a list of bands to simulate as '
                     'a concatnated string (e.g., "riz")'))
-@click.option('--seed', type=int, required=True,
-              help='the base RNG seed')
-def finalize(tilename, bands, seed):
+@click.option('--output-desdata', type=str, required=True,
+              help='the output DESDATA directory')
+def finalize(tilename, bands, output_desdata):
     finalize_files(
         tilename=tilename,
         bands=[b for b in bands],
-        seed=seed)
+        output_desdata=output_desdata)
 
 if __name__ == '__main__':
     cli()
