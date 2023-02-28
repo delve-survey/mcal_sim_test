@@ -372,6 +372,10 @@ class End2EndSimulation(object):
             Mask = ((self.simulated_catalog.cat['mag_i'] > self.gal_kws['mag_min']) & 
                     (self.simulated_catalog.cat['mag_i'] < self.gal_kws['mag_max']))
             
+            self.simulated_catalog.cat['bdf_hlr'] = np.clip(self.simulated_catalog.cat['bdf_hlr'],
+                                                            a_min = self.gal_kws['size_min'],
+                                                            a_max = self.gal_kws['size_max'])
+            
             self.simulated_catalog = self.simulated_catalog._replace(cat = self.simulated_catalog.cat[Mask])
 
             if self.gal_kws['circular']:
