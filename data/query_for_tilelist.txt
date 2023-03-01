@@ -1,0 +1,1 @@
+select distinct c.tilename from coadd c, (select distinct tilename from MADAMOW_DECADE.DR3_R1_2_IMAGE_TO_TILE) m, proctag t where c.filetype='coadd_det' and c.tilename in m.tilename and t.tag='DR3_1_2' and c.pfw_attempt_id = t.pfw_attempt_id; > /home/dhayaa/Desktop/DECADE/mcal_sim_test/data/Tilelist_DR3_1_2.csv
