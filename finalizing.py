@@ -22,7 +22,7 @@ def move_SrcExtractor_cat(tile, band, output_desdata):
     
     args = {'dir'  : output_desdata,
             'name' : os.path.basename(os.path.dirname(output_desdata)),
-            'mode' : 'plus' if 'plus' in os.path.basename(output_desdata + '/') else 'minus',
+            'mode' : 'plus' if 'plus' in os.path.basename(output_desdata) else 'minus',
             'tile' : tile,
             'band' : band}
     
@@ -44,7 +44,7 @@ def move_metacal_cat(tile, output_desdata):
     
     args = {'dir'  : output_desdata,
             'name' : os.path.basename(os.path.dirname(output_desdata)),
-            'mode' : 'plus' if 'plus' in os.path.basename(output_desdata + '/') else 'minus',
+            'mode' : 'plus' if 'plus' in os.path.basename(output_desdata) else 'minus',
             'tile' : tile}
     
     cat_path = output_desdata + "/metacal/y3v02/%(tile)s_metacal.fits" % args 
@@ -58,7 +58,7 @@ def move_meds(tile, band, output_desdata):
     
     args = {'dir'  : output_desdata,
             'name' : os.path.basename(os.path.dirname(output_desdata)),
-            'mode' : 'plus' if 'plus' in os.path.basename(output_desdata + '/') else 'minus',
+            'mode' : 'plus' if 'plus' in os.path.basename(output_desdata) else 'minus',
             'tile' : tile,
             'band' : band}
     
