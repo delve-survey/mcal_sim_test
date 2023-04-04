@@ -10,7 +10,7 @@ import os
 def finalize_files(tilename, bands, output_desdata):
     
     for b in bands:
-#         move_SrcExtractor_cat(tilename, b, output_desdata)
+        move_SrcExtractor_cat(tilename, b, output_desdata)
         move_meds(tilename, b, output_desdata)
         
     move_metacal_cat(tilename, output_desdata)
@@ -35,6 +35,7 @@ def move_SrcExtractor_cat(tile, band, output_desdata):
 
     new_path = os.environ['MCAL_DIR'] + "/%(name)s/SrcExtractor_%(tile)s_g%(mode)s_%(band)s-cat.fits" % args
 
+    print(cat_path, new_path)
     shutil.move(cat_path, new_path)
         
     return True
@@ -50,6 +51,7 @@ def move_metacal_cat(tile, output_desdata):
     cat_path = output_desdata + "/metacal/y3v02/%(tile)s_metacal.fits" % args 
     new_path = os.environ['MCAL_DIR'] + "/%(name)s/metacal_%(tile)s_g%(mode)s.fits" % args
 
+    print(cat_path, new_path)
     shutil.move(cat_path, new_path)
          
     return True
@@ -65,6 +67,7 @@ def move_meds(tile, band, output_desdata):
     meds_path = output_desdata + "/meds/y3v02/%(tile)s/%(tile)s_%(band)s_meds-y3v02.fits.fz" % args 
     new_path  = os.environ['MCAL_DIR'] + "/%(name)s/meds_%(tile)s_g%(mode)s_%(band)s-y3v02.fits.fz" % args
 
+    print(meds_path, new_path)
     shutil.move(meds_path, new_path)
         
     return True
