@@ -7,11 +7,12 @@ import shutil
 import yaml
 import os
 
-def finalize_files(tilename, bands, output_desdata):
+def finalize_files(tilename, bands, output_desdata, config):
     
     for b in bands:
         move_SrcExtractor_cat(tilename, b, output_desdata)
-        move_meds(tilename, b, output_desdata)
+        if config['save_meds'] == True: 
+            move_meds(tilename, b, output_desdata)
         
     move_metacal_cat(tilename, output_desdata)
     #clean_up_directory()
