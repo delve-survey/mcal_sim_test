@@ -43,6 +43,7 @@ class MakeSwarpCoadds(object):
         self._make_filelists()
         self._make_coadds()
         self._make_detection_coadd()
+        self._cleanup()
             
     def _make_nwgint_files(self):
         '''
@@ -82,7 +83,7 @@ class MakeSwarpCoadds(object):
                                     -o %(OUT_PATH)s \
                                     --headfile %(HEAD_PATH)s \
                                     --max_cols 50  \
-                                    -v \
+                                    --v \
                                     --interp_mask TRAIL,BPM  \
                                     --invalid_mask EDGE \
                                     --null_mask BPM,BADAMP,EDGEBLEED,EDGE,CRAY,SSXTALK,STREAK,TRAIL  \
@@ -207,8 +208,6 @@ class MakeSwarpCoadds(object):
             
             coadd_file = self.info[band]['image_path'].replace(TMP_DIR, self.output_meds_dir)
             make_dirs_for_file(coadd_file)
-            
-#             print(coadd_file)
             
             #Is of the format "$DIR/{tilename}_{band}" without the .fits.fz extension
             args['out_prefix'] = coadd_file.replace('.fits.fz', '')
@@ -427,7 +426,12 @@ class MakeSwarpCoadds(object):
         os.system(command_assemble)
         print("Finished assembling coadd for det band")
         
-#         os.system(r'rm %(out_prefix)s/%(TILENAME)s_det_tmpsci.fits' % args)
-#         print("Finished removing temp sci file")
-        
         return 1
+    
+    def _cleanup(self):
+        
+        for band in self.bands:
+            
+            for src in self.info[band]['src_info']:
+                
+                os.system("rm -v %s" % src['nwgint_path'])

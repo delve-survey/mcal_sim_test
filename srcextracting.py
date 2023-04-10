@@ -58,8 +58,6 @@ class MakeSrcExtractorCat(object):
                     'CAT'       : cat_file}
 
 
-#             print(args)
-
             srcextractor_command = "$SRCEXT_DIR/src/sex \
                                         %(DET_COADD)s[0],%(COADD)s[0] \
                                         -c $DESDM_CONFIG/Y6A1_v1_sex.config \
@@ -77,25 +75,6 @@ class MakeSrcExtractorCat(object):
                                         -DETECT_THRESH 0.8 \
                                         -ANALYSIS_THRESH 0.8" % args
             
-#             print(srcextractor_command)
             os.system(srcextractor_command)
             print("Finished srcextractor run for %s band" % band)
             
-            command_srcextractor = "$SRCEXT_DIR \
-                                        coadd/DES0130-4623_r5137p01_det.fits[0],coadd/DES0130-4623_r5137p01_i.fits[0]  \
-                                        -c config/Y6A1_v1_sex.config \
-                                        -CHECKIMAGE_TYPE SEGMENTATION \
-                                        -CHECKIMAGE_NAME seg/DES0130-4623_r5137p01_i_segmap.fits \
-                                        -PARAMETERS_NAME config/Y6A1_v1_sex.param_diskonly \
-                                        -MAG_ZEROPOINT 30 \
-                                        -FILTER_NAME config/Y6A1_v1_gauss_3.0_7x7.conv \
-                                        -CATALOG_NAME cat/DES0130-4623_r5137p01_i_cat.fits \
-                                        -FLAG_IMAGE coadd/DES0130-4623_r5137p01_i.fits[1] \
-                                        -PSF_NAME psf/DES0130-4623_r5137p01_det_psfcat.psf,psf/DES0130-4623_r5137p01_i_psfcat.psf \
-                                        -STARNNW_NAME config/Y6A1_v1_sex.nnw \
-                                        -WEIGHT_IMAGE coadd/DES0130-4623_r5137p01_det.fits[2],coadd/DES0130-4623_r5137p01_i.fits[2] \
-                                        -DEBLEND_MINCONT 0.001 \
-                                        -DEBLEND_NTHRESH 64 \
-                                        -DETECT_THRESH 0.8 \
-                                        -ANALYSIS_THRESH 0.8"
-        

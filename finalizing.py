@@ -11,11 +11,13 @@ def finalize_files(tilename, bands, output_desdata, config):
     
     for b in bands:
         move_SrcExtractor_cat(tilename, b, output_desdata)
-        if config['save_meds'] == True: 
+        if config['files']['save_meds'] == True: 
             move_meds(tilename, b, output_desdata)
         
     move_metacal_cat(tilename, output_desdata)
-    #clean_up_directory()
+    
+    if config['files']['clean_tmpdir'] == True:
+        cleanup_tmpdir_files(tilename, output_desdata)
         
 
 #Helper functions to run the above cleanup/re-organization code
@@ -73,7 +75,23 @@ def move_meds(tile, band, output_desdata):
         
     return True
 
-def clean_up_directory():
-    shutil.rmtree("$output")
+
+def cleanup_tmpdir_files(tile, output_desdata):
     
+    #Checks if both plus and minus measurements have been done, and deletes
+    #input files accordingly
+    args = {'dir'  : output_desdata,
+            'name' : os.path.basename(os.path.dirname(output_desdata)),
+            'mode' : 'plus' if 'plus' in os.path.basename(output_desdata) else 'minus',
+            'tile' : tile}
+    
+    plus  = os.path.join(os.environ['MCAL_DIR'], "/%(name)s/metacal_%(tile)s_gplus.fits" % args)
+    minus = os.path.join(os.environ['MCAL_DIR'], "/%(name)s/metacal_%(tile)s_gminus.fits" % args)
+    if os.path.isfile(plus) & os.path.isfile(minus):
+        file_paths = os.environ['PREP_DIR'] + "/%(name)s/*%(tile)s*" % args
+        os.system("rm -rv %s" % file_paths)
+        
+        file_paths = os.environ['TMPDIR'] + "/*%(tile)s*" % args
+        os.system("rm -rv %s" % file_paths)
+        
     return True
