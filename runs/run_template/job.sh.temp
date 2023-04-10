@@ -1,12 +1,12 @@
 #!/bin/bash
-#SBATCH --job-name metacal_{{ tilename }}_seed{{ seed_galsim }}_g{{ plus_or_minus }}
-#SBATCH --partition=broadwl
-##SBATCH --partition=chihway
+#SBATCH --job-name metacal_{{ tilename }}_g{{ plus_or_minus }}
+##SBATCH --partition=broadwl
+#SBATCH --partition=chihway
 #SBATCH --account=pi-chihway
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=28
 ##SBATCH --ntasks-per-node=40
-#SBATCH --time=10:00:00
+#SBATCH --time=12:00:00
 #SBATCH --output=/home/dhayaa/Desktop/DECADE/mcal_sim_test/runs/{{ model_name }}/%x.log
 #SBATCH --mail-user=dhayaa@uchicago.edu
 #SBATCH --mail-type=BEGIN,END
@@ -21,16 +21,26 @@ then
 fi
 
 
-output="$PREP_DIR/{{ model_name }}/outputs_{{ tilename }}_seed{{ seed_galsim }}_g{{ plus_or_minus }}"
+output="$PREP_DIR/{{ model_name }}/outputs_{{ tilename }}_g{{ plus_or_minus }}"
 bands="riz"
 tilename="{{ tilename }}"
-
 
 #python run_sims.py \
 #  prep \
 #  --tilename="$tilename" \
 #  --bands="$bands" \
 #  --output-desdata="$output"
+
+# NOW=$( date '+%H:%M:%S' )
+# echo "Starting initializing stage at $NOW"
+
+
+# python run_sims.py \
+#   initialize \
+#   --tilename="$tilename" \
+#   --bands="$bands" \
+#   --output-desdata="$output_tmp" \
+#   --config-file="runs/{{ model_name }}/config_{{ plus_or_minus }}.yaml"
 
 NOW=$( date '+%H:%M:%S' )
 echo "Starting galsim stage at $NOW"
@@ -108,7 +118,8 @@ python run_sims.py \
   finalize \
   --tilename="$tilename" \
   --bands="$bands" \
-  --output-desdata="$output"
+  --output-desdata="$output" \
+  --config-file="runs/{{ model_name }}/config_{{ plus_or_minus }}.yaml"
   
 NOW=$( date '+%H:%M:%S' )
 echo "Finished moving meds, mcal, SrcExtractor output to $MCAL_DIR/{{ model_name }} at $NOW"
