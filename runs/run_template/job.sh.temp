@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name metacal_{{ tilename }}_g{{ plus_or_minus }}
-##SBATCH --partition=broadwl
-#SBATCH --partition=chihway
+#SBATCH --partition=broadwl
+##SBATCH --partition=chihway
 #SBATCH --account=pi-chihway
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=28
@@ -17,7 +17,7 @@ then
     cd /home/dhayaa/Desktop/DECADE/mcal_sim_test/
     module load python
     conda activate shearDM
-    source /home/dhayaa/Desktop/DECADE/mcal_sim_test/bash_profile.sh
+    source /home/dhayaa/Desktop/DECADE/mcal_sim_test/bash_profile_midway3.sh
 fi
 
 

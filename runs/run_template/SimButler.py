@@ -6,6 +6,7 @@ import argparse
 import datetime as dt
 import numpy as np
 import glob
+import time
 
 my_parser = argparse.ArgumentParser()
 
@@ -25,11 +26,11 @@ print('-----------------------------')
 print('-----------------------------')
 
 TILENAME_SEED = 42
-NUM_OF_TILES  = 40
+NUM_OF_TILES  = 10
 tiles = pd.read_csv(os.environ['RUN_DIR'] + '/data/Tilelist_DR3_1_1.csv')
 tilenames = list(np.random.default_rng(TILENAME_SEED).choice(tiles['TILENAME'].values, size = NUM_OF_TILES, replace = False))
 
-tilenames = ['DES0821+0626', 'DES0849+0252']
+#tilenames = ['DES0821+0626', 'DES0849+0252']
 
 # tilenames = ['DES0849+0252']
 
@@ -157,8 +158,11 @@ if __name__ == '__main__':
                 break
                 
             if current_job_count() >= args['MaxConcurrentJobs']:
-            
-                time.sleep(120)
+                
+                print("---------------------------")
+                print(dt.datetime.now())
+                print("---------------------------") 
+                time.sleep(60*5)
 
             else:
                 

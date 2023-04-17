@@ -38,7 +38,7 @@ def move_SrcExtractor_cat(tile, band, output_desdata):
 
     new_path = os.environ['MCAL_DIR'] + "/%(name)s/SrcExtractor_%(tile)s_g%(mode)s_%(band)s-cat.fits" % args
 
-    print(cat_path, new_path)
+    #print(cat_path, new_path)
     shutil.move(cat_path, new_path)
         
     return True
@@ -54,7 +54,7 @@ def move_metacal_cat(tile, output_desdata):
     cat_path = output_desdata + "/metacal/y3v02/%(tile)s_metacal.fits" % args 
     new_path = os.environ['MCAL_DIR'] + "/%(name)s/metacal_%(tile)s_g%(mode)s.fits" % args
 
-    print(cat_path, new_path)
+    #print(cat_path, new_path)
     shutil.move(cat_path, new_path)
          
     return True
@@ -70,7 +70,7 @@ def move_meds(tile, band, output_desdata):
     meds_path = output_desdata + "/meds/y3v02/%(tile)s/%(tile)s_%(band)s_meds-y3v02.fits.fz" % args 
     new_path  = os.environ['MCAL_DIR'] + "/%(name)s/meds_%(tile)s_g%(mode)s_%(band)s-y3v02.fits.fz" % args
 
-    print(meds_path, new_path)
+    #print(meds_path, new_path)
     shutil.move(meds_path, new_path)
         
     return True
@@ -85,13 +85,24 @@ def cleanup_tmpdir_files(tile, output_desdata):
             'mode' : 'plus' if 'plus' in os.path.basename(output_desdata) else 'minus',
             'tile' : tile}
     
-    plus  = os.path.join(os.environ['MCAL_DIR'], "/%(name)s/metacal_%(tile)s_gplus.fits" % args)
-    minus = os.path.join(os.environ['MCAL_DIR'], "/%(name)s/metacal_%(tile)s_gminus.fits" % args)
+    plus  = os.environ['MCAL_DIR'] + "/%(name)s/metacal_%(tile)s_gplus.fits" % args
+    minus = os.environ['MCAL_DIR'] + "/%(name)s/metacal_%(tile)s_gminus.fits" % args
+    
+    print(plus)
+    print(minus)
+
     if os.path.isfile(plus) & os.path.isfile(minus):
         file_paths = os.environ['PREP_DIR'] + "/%(name)s/*%(tile)s*" % args
         os.system("rm -rv %s" % file_paths)
+
+        print(file_paths)
         
         file_paths = os.environ['TMPDIR'] + "/*%(tile)s*" % args
         os.system("rm -rv %s" % file_paths)
+
+        print(file_paths)
+        print(args)
+
+        print(tile, output_desdata)
         
     return True

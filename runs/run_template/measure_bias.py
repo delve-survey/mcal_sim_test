@@ -3,13 +3,14 @@ import numpy as np
 import os
 from tqdm import tqdm
 import sys
+import yaml
 
-from render_jobs import tilenames
+from SimButler import tilenames
 
 
 summary = np.mean
 
-tilenames = tilenames[:5]
+tilenames = tilenames
 
 print('--------------------------')
 print('USING TILES:')
@@ -32,6 +33,9 @@ tiles_list.append(tilenames)
 seed_list = [[i] for i in range(len(tilenames))]
 seed_list.append([i for i in range(len(tilenames))])
 
+with open(os.path.dirname(__file__) + '/config_plus.yaml', 'r') as fp:
+    config = yaml.load(fp, Loader=yaml.Loader)
+        
 def _get_subset_array(res, i, string):
     '''
     Convenience function for getting reading out specific arrays
@@ -41,22 +45,85 @@ def _get_subset_array(res, i, string):
     
     return res[string][ind]
 
+def _get_cat_path(tile, band, seed, mode = 'plus'):
+    
+    args = {'name' : name,
+            'seed' : seed,
+            'mode' : mode,
+            'tile' : tile,
+            'band' : band}
+    
+    
+    return os.environ['MCAL_DIR'] + r"/%(name)s/SrcExtractor_%(tile)s_g%(mode)s_%(band)s-cat.fits" % args
+    
 #Loop over tiles (and also a combination of all tiles together)
 #and get m and c for objects in each tile
 for tiles, seed in zip(tiles_list, seed_list):
     
+    _t = []
+    _s = []
+    
+    for t, i in zip(tiles, seed):
+        
+        
+        fits.open(PATH + '/metacal_%s_gplus.fits'%(t))
+        fits.open(PATH + '/metacal_%s_gminus.fits'%(t))
+        _t.append(t)
+        _s.append(i)
+        
+        
+
+    tiles = _t
+    seed  = _s
+
+    if len(tiles) == 0: continue
+
     N = len(tiles) 
     
-    if N == 1: continue #Just quick "hack" so we skip all single tile calculations
+    #if N == 1: continue #Just quick "hack" so we skip all single tile calculations
     
     print("--------------------------------------------------------")
     print("TILES:", tiles)
     print("--------------------------------------------------------")
     
-    gplus  = [fits.open(PATH + '/metacal_%s_seed%d_gplus.fits'%(t, i)) for t, i in zip(tiles, seed)]
-    gminus = [fits.open(PATH + '/metacal_%s_seed%d_gminus.fits'%(t, i)) for t, i in zip(tiles, seed)]
+    gplus  = [fits.open(PATH + '/metacal_%s_gplus.fits'%(t)) for t, i in zip(tiles, seed)]
+    gminus = [fits.open(PATH + '/metacal_%s_gminus.fits'%(t)) for t, i in zip(tiles, seed)]
     
-    
+    if 'truedet' not in config['gal_kws']['truth_type']:
+        print(_get_cat_path(tiles[0], 'r', seed[0], mode = 'plus'))
+        SE_plus_r  = [fits.open(_get_cat_path(t, 'r', i, mode = 'plus')) for t, i in zip(tiles, seed)]
+        SE_plus_i  = [fits.open(_get_cat_path(t, 'i', i, mode = 'plus')) for t, i in zip(tiles, seed)]
+        SE_plus_z  = [fits.open(_get_cat_path(t, 'z', i, mode = 'plus')) for t, i in zip(tiles, seed)]
+
+        SE_minus_r = [fits.open(_get_cat_path(t, 'r', i, mode = 'minus')) for t, i in zip(tiles, seed)]
+        SE_minus_i = [fits.open(_get_cat_path(t, 'i', i, mode = 'minus')) for t, i in zip(tiles, seed)]
+        SE_minus_z = [fits.open(_get_cat_path(t, 'z', i, mode = 'minus')) for t, i in zip(tiles, seed)]
+        
+        
+        mask_SEflag_plus = ((np.concatenate([SE_plus_r[i][1].data['FLAGS'] for i in range(N)]) <= 3) &
+                            (np.concatenate([SE_plus_i[i][1].data['FLAGS'] for i in range(N)]) <= 3) &
+                            (np.concatenate([SE_plus_z[i][1].data['FLAGS'] for i in range(N)]) <= 3))
+        
+        mask_snr_plus = (np.concatenate([SE_plus_r[i][1].data['FLUX_AUTO'] for i in range(N)])/
+                         np.concatenate([SE_plus_r[i][1].data['FLUXERR_AUTO'] for i in range(N)])) > 5
+        
+        mask_size_plus = (np.concatenate([SE_plus_r[i][1].data['FLUX_RADIUS']*0.236 for i in range(N)]) > 0.5)
+        
+        
+        mask_SEflag_minus = ((np.concatenate([SE_minus_r[i][1].data['FLAGS'] for i in range(N)]) <= 3) &
+                             (np.concatenate([SE_minus_i[i][1].data['FLAGS'] for i in range(N)]) <= 3) &
+                             (np.concatenate([SE_minus_z[i][1].data['FLAGS'] for i in range(N)]) <= 3))
+        
+        mask_snr_minus = (np.concatenate([SE_minus_r[i][1].data['FLUX_AUTO'] for i in range(N)])/
+                          np.concatenate([SE_minus_r[i][1].data['FLUXERR_AUTO'] for i in range(N)])) > 5
+        
+        mask_size_minus = (np.concatenate([SE_minus_r[i][1].data['FLUX_RADIUS']*0.236 for i in range(N)]) > 0.5)
+
+        
+        number_plus  = np.concatenate([SE_plus_r[i][1].data['NUMBER'] + i*int(1e6) for i in range(N)])
+        number_minus = np.concatenate([SE_minus_r[i][1].data['NUMBER'] + i*int(1e6) for i in range(N)])
+        print("Size before cuts", len(number_plus))
+        
     ngrid = 10
     
     spacing = 10_000/ngrid
@@ -65,6 +132,7 @@ for tiles, seed in zip(tiles_list, seed_list):
     for g_name, g in zip(['p', 'm'], [gplus, gminus]):
         
         Flags = np.concatenate([g[i][1].data['mcal_flags'] for i in range(N)])
+        ID    = np.concatenate([g[i][1].data['id'] + i*int(1e6) for i in range(N)])
 
         for s in ['noshear', '1p', '1m', '2p', '2m']:
               
@@ -72,6 +140,15 @@ for tiles, seed in zip(tiles_list, seed_list):
             SNR = np.concatenate([g[i][1].data['mcal_s2n_%s'%s] for i in range(N)])
             T   = np.concatenate([g[i][1].data['mcal_T_ratio_%s'%s] for i in range(N)])
             Mask = (Flags == 0) & (SNR > 10) & (T > 0.5)
+            
+            if 'truedet' not in config['gal_kws']['truth_type']:
+                
+                if g_name == 'p':
+                    inds = np.intersect1d(ID, number_plus, return_indices = True)[2]
+                    Mask = Mask & (mask_SEflag_plus & mask_snr_plus & mask_size_plus)[inds]
+                elif g_name == 'm':
+                    inds = np.intersect1d(ID, number_minus, return_indices = True)[2]
+                    Mask = Mask & (mask_SEflag_minus & mask_snr_minus & mask_size_minus)[inds]
             
             Results['e1_%s_%s'%(g_name, s)] = np.concatenate([g[i][1].data['mcal_g_%s'%s][:,0] for i in range(N)])[Mask]
             Results['e2_%s_%s'%(g_name, s)] = np.concatenate([g[i][1].data['mcal_g_%s'%s][:,1] for i in range(N)])[Mask]
@@ -122,12 +199,20 @@ for tiles, seed in zip(tiles_list, seed_list):
 
     print('\n---------------------------------\n')
     print("----------- COMBINED ---------------")
-    print('size      N = %d'%Results['e1_p_noshear'].shape)
+    print('size      N = %d (Masked %0.2f)'%(Results['e1_p_noshear'].shape[0], np.average(Mask)))
     print('recovered m = %1.3f +/- %1.3f [1e-3, 3-sigma]'%(np.mean(m/1e-3), 3*np.std(m/1e-3)*np.sqrt(Npatch)))
     print('recovered c = %1.3f +/- %1.3f [1e-5, 3-sigma]'%(np.mean(c/1e-5), 3*np.std(c/1e-5)*np.sqrt(Npatch)))
     
     print('\n---------------------------------\n')
     
+    with open(os.path.dirname(__file__) + '/README.md', 'w') as f:
+        
+        f.write("TEST RESULTS FOR %s" %name)
+        f.write("---------------------------------")
+        f.write("size      N = %d (Masked %0.2f)"%(Results['e1_p_noshear'].shape[0], np.average(Mask)))
+        f.write("recovered m = %1.3f +/- %1.3f [1e-3, 3-sigma]"%(np.mean(m/1e-3), 3*np.std(m/1e-3)*np.sqrt(Npatch)))
+        f.write("recovered c = %1.3f +/- %1.3f [1e-5, 3-sigma]"%(np.mean(c/1e-5), 3*np.std(c/1e-5)*np.sqrt(Npatch)))
+        
     R11 = R11_plus
     R22 = R22_plus
 
@@ -138,7 +223,7 @@ for tiles, seed in zip(tiles_list, seed_list):
     c = g2
 
     print("----------- PLUS ---------------")
-    print('size      N = %d'%Results['e1_p_noshear'].shape)
+    print('size      N = %d'%Results['e1_p_noshear'].shape[0])
     print('recovered m = %1.3f +/- %1.3f [1e-3, 3-sigma]'%(np.mean(m/1e-3), 3*np.std(m/1e-3)*np.sqrt(Npatch)))
     print('recovered c = %1.3f +/- %1.3f [1e-5, 3-sigma]'%(np.mean(c/1e-5), 3*np.std(c/1e-5)*np.sqrt(Npatch)))
     
@@ -152,7 +237,7 @@ for tiles, seed in zip(tiles_list, seed_list):
     c = g2
 
     print("----------- MINUS ---------------")
-    print('size      N = %d'%Results['e1_p_noshear'].shape)
+    print('size      N = %d'%Results['e1_p_noshear'].shape[0])
     print('recovered m = %1.3f +/- %1.3f [1e-3, 3-sigma]'%(np.mean(m/1e-3), 3*np.std(m/1e-3)*np.sqrt(Npatch)))
     print('recovered c = %1.3f +/- %1.3f [1e-5, 3-sigma]'%(np.mean(c/1e-5), 3*np.std(c/1e-5)*np.sqrt(Npatch)))
           
