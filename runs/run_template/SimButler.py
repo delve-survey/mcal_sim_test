@@ -26,7 +26,7 @@ print('-----------------------------')
 print('-----------------------------')
 
 TILENAME_SEED = 42
-NUM_OF_TILES  = 10
+NUM_OF_TILES  = 5
 tiles = pd.read_csv(os.environ['RUN_DIR'] + '/data/Tilelist_DR3_1_1.csv')
 tilenames = list(np.random.default_rng(TILENAME_SEED).choice(tiles['TILENAME'].values, size = NUM_OF_TILES, replace = False))
 
