@@ -6,7 +6,7 @@ gal_kws:
   gal_mag: 17
   gal_source: simple
   
-  size_min: 0.3
+  size_min: 0.5
   size_max: 0.8
   q_min: 0.5
   q_max: 1.0
@@ -14,22 +14,24 @@ gal_kws:
   mag_max: 25.5
   
   Mask: True
-  n_grid: 200
+  n_grid: 300
   g1: {{ g1 }}
   g2: 0.0
-  
-  
 
   truth_type: grid
   ngal_type: "true"
 
   circular: True
 
+files:
+  save_meds: False
+  clean_tmpdir: True
+
 star_kws:
-  stars: True
+  stars: False
   star_source: lsst_sim
   f_bin: 0.4
-  star_mag: 4
+  star_mag: custom
   upscale: 1
   
   mag_min: -30
