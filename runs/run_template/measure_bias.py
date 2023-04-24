@@ -65,11 +65,13 @@ for tiles, seed in zip(tiles_list, seed_list):
     
     for t, i in zip(tiles, seed):
         
-        
-        fits.open(PATH + '/metacal_%s_gplus.fits'%(t))
-        fits.open(PATH + '/metacal_%s_gminus.fits'%(t))
-        _t.append(t)
-        _s.append(i)
+        try:        
+            fits.open(PATH + '/metacal_%s_gplus.fits'%(t))
+            fits.open(PATH + '/metacal_%s_gminus.fits'%(t))
+            _t.append(t)
+            _s.append(i)
+        except:
+            print("SKIPPING", t)
         
         
 
@@ -133,13 +135,14 @@ for tiles, seed in zip(tiles_list, seed_list):
         
         Flags = np.concatenate([g[i][1].data['mcal_flags'] for i in range(N)])
         ID    = np.concatenate([g[i][1].data['id'] + i*int(1e6) for i in range(N)])
+        bfrac = np.concatenate([g[i][1].data['badfrac'] for i in range(N)])
 
         for s in ['noshear', '1p', '1m', '2p', '2m']:
               
             
             SNR = np.concatenate([g[i][1].data['mcal_s2n_%s'%s] for i in range(N)])
             T   = np.concatenate([g[i][1].data['mcal_T_ratio_%s'%s] for i in range(N)])
-            Mask = (Flags == 0) & (SNR > 10) & (T > 0.5)
+            Mask = (Flags == 0) & (SNR > 10) & (T > 0.5) & (bfrac < 0.1)
             
             if 'truedet' not in config['gal_kws']['truth_type']:
                 
