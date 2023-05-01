@@ -9,8 +9,6 @@ import os
 
 def finalize_files(tilename, bands, output_desdata, config):
     
-    move_SrcExtractor_cat(tilename, 'det', output_desdata) #Move just the catalog on detection coadd
-    
     for b in bands:
         move_SrcExtractor_cat(tilename, b, output_desdata)
         if config['files']['save_meds'] == True: 
