@@ -61,13 +61,19 @@ def render_sources_for_image(
 def _render_list(inds, wcs, draw_method, image_shape, src_func):
     im = galsim.ImageD(nrow=image_shape[0], ncol=image_shape[1])
     for ind in inds:
-        # draw
-        src, pos = src_func(ind)
-        stamp = render_source_in_image(
-            source=src,
-            local_wcs=wcs.local(image_pos=pos),
-            image_pos=pos,
-            draw_method=draw_method)
+        
+        try:
+            src, pos = src_func(ind)
+
+            stamp = render_source_in_image(
+                source=src,
+                local_wcs=wcs.local(image_pos=pos),
+                image_pos=pos,
+                draw_method=draw_method)
+
+        except galsim.errors.GalSimFFTSizeError:
+            print("FFT WAS TOO BIG FOR IND", ind)
+            continue
 
         # intersect and add to total image
         overlap = stamp.bounds & im.bounds
