@@ -12,6 +12,7 @@ my_parser = argparse.ArgumentParser()
 
 my_parser.add_argument('--Initialize', action='store_true', default = False)
 my_parser.add_argument('--Maintain',   action='store_true', default = False)
+my_parser.add_argument('--TileCount',  action='store', type = int, default = 10)
 
 my_parser.add_argument('--MaxConcurrentJobs', action='store', type = int, default = 10)
 my_parser.add_argument('--MaxCutoffTime',     action='store', type = int, default = 3600*48) #Maxcutoff time in seconds
@@ -28,7 +29,7 @@ print('-----------------------------')
 TILENAME_SEED = 42
 NUM_OF_TILES  = 13000
 tiles = pd.read_csv(os.environ['RUN_DIR'] + '/data/Tilelist_DR3_1.csv')
-tilenames = list(np.random.default_rng(TILENAME_SEED).choice(tiles['TILENAME'].values, size = NUM_OF_TILES, replace = False))[0:200]
+tilenames = list(np.random.default_rng(TILENAME_SEED).choice(tiles['TILENAME'].values, size = NUM_OF_TILES, replace = False))[0:args['TileCount']]
 
 print(tilenames)
 if __name__ == '__main__':
