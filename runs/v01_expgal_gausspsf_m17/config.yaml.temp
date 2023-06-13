@@ -1,0 +1,44 @@
+survey_kws:
+  name: DECADE
+
+gal_kws:
+  type: exp
+  gal_mag: 17
+  gal_source: simple
+  
+  size_min: 0.499
+  size_max: 0.501
+  q_min: 0.99
+  q_max: 1.0
+  mag_min: -30
+  mag_max: 25.5
+  
+  Mask: False
+  n_grid: 300
+  g1: {{ g1 }}
+  g2: 0.0
+
+  truth_type: grid-truedet
+  ngal_type: "true"
+
+  circular: False
+
+files:
+  save_meds: False
+  clean_tmpdir: True
+
+star_kws:
+  stars: False
+  star_source: lsst_sim
+  f_bin: 0.4
+  star_mag: custom
+  upscale: 1
+  
+  mag_min: -30
+  mag_max: 25.5
+     
+psf_kws:
+  type: gauss
+
+true_detection:
+  box_size: 32
