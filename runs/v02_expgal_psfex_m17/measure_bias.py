@@ -219,9 +219,9 @@ for tiles, seed in zip(tiles_list, seed_list):
         
         f.write("TEST RESULTS FOR %s\n" %name)
         f.write("---------------------------------\n")
-        f.write("size      N = %d (Masked %0.2f)\n"%(Results['e1_p_noshear'].shape[0], np.average(Mask)))
-        f.write("recovered m = %1.3f +/- %1.3f [1e-3, 3-sigma]\n"%(np.mean(m/1e-3), 3*np.std(m/1e-3)*np.sqrt(Npatch)))
-        f.write("recovered c = %1.3f +/- %1.3f [1e-5, 3-sigma]\n"%(np.mean(c/1e-5), 3*np.std(c/1e-5)*np.sqrt(Npatch)))
+        f.write("size      N = %d (Masked %0.2f)\n\n"%(Results['e1_p_noshear'].shape[0], np.average(Mask)))
+        f.write("recovered m = %1.3f +/- %1.3f [1e-3, 3-sigma]\n\n"%(np.mean(m/1e-3), 3*np.std(m/1e-3)*np.sqrt(Npatch)))
+        f.write("recovered c = %1.3f +/- %1.3f [1e-5, 3-sigma]\n\n"%(np.mean(c/1e-5), 3*np.std(c/1e-5)*np.sqrt(Npatch)))
         
     R11 = R11_plus
     R22 = R22_plus
