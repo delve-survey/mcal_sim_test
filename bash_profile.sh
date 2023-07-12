@@ -21,7 +21,7 @@ export PYTHONPATH=/home/dhayaa/Desktop/DECADE/measure_shear/metacal:$PYTHONPATH
 #export PYTHONPATH=/home/dhayaa/.conda/envs/shearDM/despyfits/lib:$PYTHONPATH
 
 
-export ROWE_STATS_RUN_DIR=/home/dhayaa/Desktop/DECADE/shearcat/code/rowe_stats
+export ROWE_STATS_RUN_DIR=/home/dhayaa/Desktop/DECADE/shearcat/shear_rowe_stats/
 export ROWE_STATS_DIR=/scratch/midway2/dhayaa/TEMP
 
 
