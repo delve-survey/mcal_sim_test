@@ -6,6 +6,9 @@ and saving relevant quantities.
 import shutil
 import yaml
 import os
+from files import get_truth_catalog_path
+from constants import MEDSCONF
+
 
 def finalize_files(tilename, bands, output_desdata, config):
     
@@ -15,6 +18,7 @@ def finalize_files(tilename, bands, output_desdata, config):
             move_meds(tilename, b, output_desdata)
         
     move_metacal_cat(tilename, output_desdata)
+    move_Truth_cat(tilename, output_desdata)
     
     if config['files']['clean_tmpdir'] == True:
         cleanup_tmpdir_files(tilename, output_desdata)
@@ -39,6 +43,23 @@ def move_SrcExtractor_cat(tile, band, output_desdata):
     new_path = os.environ['MCAL_DIR'] + "/%(name)s/SrcExtractor_%(tile)s_g%(mode)s_%(band)s-cat.fits" % args
 
     #print(cat_path, new_path)
+    shutil.move(cat_path, new_path)
+        
+    return True
+
+
+#Helper functions to run the above cleanup/re-organization code
+def move_Truth_cat(tile, output_desdata):
+    
+    args = {'dir'  : output_desdata,
+            'name' : os.path.basename(os.path.dirname(output_desdata)),
+            'mode' : 'plus' if 'plus' in os.path.basename(output_desdata) else 'minus',
+            'tile' : tile}
+    
+    cat_path = get_truth_catalog_path(meds_dir = output_desdata, medsconf = MEDSCONF, tilename = tile)
+    new_path = os.environ['MCAL_DIR'] + "/%(name)s/Input_%(tile)s_g%(mode)s-cat.fits" % args
+
+    print(cat_path, new_path)
     shutil.move(cat_path, new_path)
         
     return True
