@@ -97,7 +97,7 @@ for t in tqdm(tilenames, desc = 'Matching Tiles'):
                        ('true_FLUX_r','>f4'),('true_FLUX_i','>f4'),('true_FLUX_z','>f4'), 
                        ('FLUX_r','>f4'),     ('FLUX_i','>f4'),     ('FLUX_z','>f4'), 
                        ('FLUX_r_ERR','>f4'), ('FLUX_i_ERR','>f4'), ('FLUX_z_ERR','>f4'),
-                       ('photoz','>f4'), ('detected', '?')])
+                       ('photoz','>f4'), ('d_arcsec','>f4'), ('detected', '?')])
     
     output = np.zeros(Nobj, dtype = dtype)
     
