@@ -25,12 +25,12 @@ CosmosData = collections.namedtuple(
 
 # @functools.lru_cache(maxsize=8)
 def _cached_catalog_read():
-    fname = os.path.join(os.environ.get('CATSIM_DIR', '.'), 'OneDegSq.fits',)
+    fname = os.environ['CATSIM_PATH']
     return fitsio.read(fname)
 
 
 def _cached_COSMOS_catalog_read():
-    fname = os.path.join(os.environ.get('CATCOSMOS_DIR', '.'), 'input_cosmos_v4.fits',)
+    fname = os.environ['CATCOSMOS_PATH']
     return fitsio.read(fname)
 
 
@@ -238,10 +238,10 @@ def get_cosmos_galaxy(*, cosmos_ind, rng, data, band = None):
     bulge_frac = data.cat['bdf_fracdev'][cosmos_ind] #Fraction of bulge to total
     
     if band == None:
-        flux = np.sum([data.cat['flux_%s'%i][cosmos_ind] for i in ['r', 'i', 'z']])
+        flux = np.sum([data.cat['flux_%s_dered'%i][cosmos_ind] for i in ['r', 'i', 'z']])
         print("Why am I in here", band)
     else:
-        flux = data.cat['flux_%s'%band][cosmos_ind]
+        flux = data.cat['flux_%s_dered'%band][cosmos_ind]
         
     disk  = galsim.Exponential(flux = flux,   half_light_radius = data.cat['bdf_hlr'][cosmos_ind])
     bulge = galsim.DeVaucouleurs(flux = flux, half_light_radius = data.cat['bdf_hlr'][cosmos_ind])

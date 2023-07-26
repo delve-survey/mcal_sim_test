@@ -8,6 +8,7 @@ import yaml
 import joblib
 import galsim
 import fitsio
+import healpy as hp #Needed to read extinction map
 from esutil.ostools import StagedOutFile
 
 from files import (
@@ -15,7 +16,7 @@ from files import (
     make_dirs_for_file,
     get_truth_catalog_path,
     expand_path)
-from constants import MEDSCONF
+from constants import MEDSCONF, R_SFD98
 from truthing import make_coadd_grid_radec, make_coadd_random_radec
 from sky_bounding import get_rough_sky_bounds, radec_to_uv
 from wcsing import get_esutil_wcs, get_galsim_wcs
@@ -271,15 +272,26 @@ class End2EndSimulation(object):
         else:
             raise ValueError("Invalid option for `truth_type`. Use 'grid', 'random', 'grid-truedet', or 'random-truedet'.")
             
-        truth_cat = np.zeros(len(ra), dtype=[('number', 'i8'), ('ind', 'i8'), 
-                                             ('ra',  'f8'), ('dec', 'f8'), 
-                                             ('x', 'f8'), ('y', 'f8'),
-                                             ('a_world', 'f8'), ('b_world', 'f8'), ('size', 'f8')])
+        dtype = [('number', 'i8'), ('ind', 'i8'), ('ra',  'f8'), ('dec', 'f8'), ('x', 'f8'), ('y', 'f8'),
+                 ('a_world', 'f8'), ('b_world', 'f8'), ('size', 'f8')]
+        for b in self.bands:
+            dtype += [('A%s'%b, 'f8')]
+            
+        truth_cat = np.zeros(len(ra), dtype = dtype)
         truth_cat['number'] = np.arange(len(ra)).astype(np.int64) + 1
         truth_cat['ra']  = ra
         truth_cat['dec'] = dec
         truth_cat['x'] = x
         truth_cat['y'] = y
+        
+        if self.gal_kws['extinction'] == True:
+            
+            EBV   = hp.read_map(os.environ['EBV_PATH'])
+            NSIDE = hp.npix2nside(EBV.size) 
+            inds  = hp.ang2pix(NSIDE, ra, dec, lonlat = True)
+            
+            for b in self.bands: truth_cat['A%s' % b] = R_SFD98[b] * EBV[inds]
+            
         
         if self.gal_kws['gal_source'] in ['varsize', 'varang', 'varsizeang']:
             truth_cat['ind']     = self.galsource_rng.randint(low=0, high=len(self.simulated_catalog), size=len(ra))
@@ -776,7 +788,13 @@ class LazySourceCat(object):
         if self.gal_mag != 'custom':
             normalized_flux = 10**((30 - self.gal_mag)/2.5)
             obj = obj.withFlux(normalized_flux)
+            
+        #Now do extinction (the coefficients are just zero if we didnt set gal_kws['extinction'] = True)
+        A_mag  = self.truth_cat[ind]['A%s' % self.band]
+        A_flux = 10**(-A_mag/2.5)
+        obj    = obj.withScaledFlux(A_flux)
         
+        #Now shear + psf
         obj = obj.shear(g1=self.g1, g2=self.g2)
         psf = self.psf.getPSF(image_pos=pos)
         
@@ -835,7 +853,9 @@ class LazyStarSourceCat(object):
 
         normalized_flux = 10**((30 - mag)/2.5)
 
-        #Take exponential profile, shear it to cause intrinsic ellipticity in direction given by rot
+        #No extinction correction since the catalog (LSST sim) already has this included
+        
+        #Just PSF since stars ARE the point source
         obj = self.psf.getPSF(image_pos=pos).withFlux(normalized_flux)
         
         return obj, pos

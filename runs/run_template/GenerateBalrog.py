@@ -93,7 +93,7 @@ for t in tqdm(tilenames, desc = 'Matching Tiles'):
     Nobj = len(Mask)
         
         
-    dtype  = np.dtype([('Truth_ind','>f4'), ('ra', '>f4'),('dec', '>f4'),('true_ra', '>f4'), ('true_dec', '>f4'), 
+    dtype  = np.dtype([('Truth_ind','>u4'), ('ra', '>f4'),('dec', '>f4'),('true_ra', '>f4'), ('true_dec', '>f4'), 
                        ('true_FLUX_r','>f4'),('true_FLUX_i','>f4'),('true_FLUX_z','>f4'), 
                        ('FLUX_r','>f4'),     ('FLUX_i','>f4'),     ('FLUX_z','>f4'), 
                        ('FLUX_r_ERR','>f4'), ('FLUX_i_ERR','>f4'), ('FLUX_z_ERR','>f4'),
