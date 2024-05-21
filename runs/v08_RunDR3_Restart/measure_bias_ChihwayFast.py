@@ -4,6 +4,7 @@ import os, sys, joblib
 from tqdm import tqdm
 import yaml, argparse
 import fitsio
+import h5py
 
 from SimButler import tilenames as tilenames_orig
 
@@ -42,6 +43,7 @@ my_parser = argparse.ArgumentParser()
 
 my_parser.add_argument('--TileCount',  action='store', type = int, default = 10)
 my_parser.add_argument('--NewClassification',  action='store_true', default = False)
+my_parser.add_argument('--max_badfrac',  action='store', type = float, default = 0.2)
 
 args = vars(my_parser.parse_args())
 
@@ -59,6 +61,55 @@ Foreground_map = hp.read_map('/project/chihway/dhayaa/DECADE/Foreground_Masks/GO
 Badcolor_map   = hp.read_map('/project2/kadrlica/chinyi/DELVE_DR3_1_bad_colour_mask.fits', dtype = int)
 EBV            = hp.read_map('/project/chihway/dhayaa/DECADE/Imsim_Inputs/ebv_sfd98_fullres_nside_4096_ring_equatorial.fits')
 
+NSIDE = 256
+with h5py.File('/project/chihway/data/decade/metacal_gold_combined_20240209.hdf') as f:
+    
+    mask = f['baseline_mcal_mask_noshear'][:] > 0
+    ra   = f['RA'][:][mask]
+    dec  = f['DEC'][:][mask]
+    
+    hpix = hp.ang2pix(NSIDE, ra, dec, lonlat = True)
+    Map  = np.bincount(hpix, minlength = hp.nside2npix(NSIDE)) > 0
+
+
+def query_disc_and_check(vec, nside, radius_rad, hp_map):
+    """Helper function to perform hp.query_disc and check for zero pixels."""
+    pixels_in_disc = hp.query_disc(nside, vec, radius_rad, nest=False)
+    if np.any(hp_map[pixels_in_disc] == 0):
+        return pixels_in_disc
+    return []
+
+def remove_edge_pixels_exact_multiprocessing(hp_map, nside, radius_deg):
+    """Remove all pixels within a given radius of any zero pixel using multiprocessing."""
+    radius_rad = np.radians(radius_deg)
+    
+    # Step 1: Identify all one-valued pixels
+    one_pixels = np.where(hp_map == 1)[0]
+    
+    # Step 2: Use hp.query_disc to find all pixels within the radius of one-valued pixels and check for zeros
+    vecs = hp.pix2vec(nside, one_pixels, nest=False)
+    vec_list = list(zip(*vecs))
+    
+    mapp = hp_map.copy()
+    
+    # Step 3: Use multiprocessing to speed up hp.query_disc calls with progress bar
+    all_edge_pixels = set()
+#     with Pool(cpu_count()) as pool:
+#         for res in tqdm(pool.imap_unordered(lambda vec: query_disc_and_check(vec, nside, radius_rad, hp_map), vec_list), total=len(vec_list)):
+#             all_edge_pixels.update(res)
+    for res in tqdm([query_disc_and_check(vec, nside, radius_rad, mapp) for vec in vec_list], total=len(vec_list)):
+        all_edge_pixels.update(res)
+    
+    # Step 4: Set the values of these pixels in the original map to 0
+    mapp[list(all_edge_pixels)] = 0
+    
+    return mapp
+
+
+# Remove edge pixels within 1 degree of any zero pixel
+Apodized_Mask = remove_edge_pixels_exact_multiprocessing(Map, NSIDE, 0.3)
+
+    
 
 # print('--------------------------')
 # print('USING TILES:')
@@ -238,6 +289,8 @@ for tiles, seed in zip(tiles_list, seed_list):
 
         
         print("Size before cuts", len(number_plus))
+        print("Size cuts", np.average(mask_size_plus))
+        print("SNR cuts", np.average(mask_snr_plus))
         
         ra_plus = (parallel_concatenator(lambda t,i: fitsio.read(_get_cat_path(t, 'r', i, mode = 'plus'), columns = 'ALPHA_J2000'), 
                                               N, tiles, tinds)
@@ -262,10 +315,15 @@ for tiles, seed in zip(tiles_list, seed_list):
         #Add the island cuts
         area_mask_plus  = area_mask_plus  & np.invert(dec_plus  > np.where(ra_plus < 225, 30 - (30 - 12)/(225 - 200)  * (ra_plus - 200), 12.))
         area_mask_minus = area_mask_minus & np.invert(dec_minus > np.where(ra_minus < 225, 30 - (30 - 12)/(225 - 200) * (ra_minus - 200), 12.))
+        
+        
+        
+        data_mask_plus  = Apodized_Mask[hp.ang2pix(NSIDE, ra_plus,  dec_plus,  lonlat = True)] == 1
+        data_mask_minus = Apodized_Mask[hp.ang2pix(NSIDE, ra_minus, dec_minus, lonlat = True)] == 1
 
         
         
-    ngrid = 1
+    ngrid = 2
     
     spacing = 10_000/ngrid
     Results = {}
@@ -281,17 +339,21 @@ for tiles, seed in zip(tiles_list, seed_list):
                 
             if g_name == 'p':
                 inds    = np.intersect1d(ID, number_plus, return_indices = True)[1:]
+                #SE_mask = (mask_SEflag_plus & mask_snr_plus & mask_size_plus & area_mask_plus)[inds[1]][np.argsort(inds[0])]
                 SE_mask = (mask_SEflag_plus & area_mask_plus)[inds[1]][np.argsort(inds[0])]
+                data_mask = data_mask_plus[inds[1]][np.argsort(inds[0])]
                 assert np.allclose(ID, number_plus[inds[1]][np.argsort(inds[0])] ), "ID is not matched properly"
             elif g_name == 'm':
                 inds    = np.intersect1d(ID, number_minus, return_indices = True)[1:]
+                #SE_mask = (mask_SEflag_minus & mask_snr_minus & mask_size_minus & area_mask_minus)[inds[1]][np.argsort(inds[0])]
                 SE_mask = (mask_SEflag_minus & area_mask_minus)[inds[1]][np.argsort(inds[0])]
+                data_mask = data_mask_minus[inds[1]][np.argsort(inds[0])]
                 assert np.allclose(ID, number_minus[inds[1]][np.argsort(inds[0])] ), "ID is not matched properly"
         
             
         A = EBV[hp.ang2pix(4096, pos[0], pos[1], lonlat = True)][inds[1]][np.argsort(inds[0])]
         
-        
+        badfrac = parallel_concatenator(lambda t,i: fitsio.read(PATHS[t] + '/metacal_%s_%s.fits'%(t, n), columns = 'badfrac'), N, tiles, tinds) 
         for s in tqdm(['noshear', '1p', '1m', '2p', '2m']):
               
             
@@ -315,12 +377,16 @@ for tiles, seed in zip(tiles_list, seed_list):
             
             Mask = Mask & SE_mask
             
+            Mask_more = (badfrac[Mask] < args['max_badfrac']) #& (data_mask[Mask] == 1)
+
+            print("MASK_MORE", np.average(Mask_more))
+
             print(f"MASK TAKES US FROM {Mask.size} ---> {np.sum(Mask)} ({np.average(Mask)})")
             #######################################
             #Now setup the SOM classifications
             #######################################
             
-            cell_path = PATH + '/wide_cells_%s_%s.npy'%(n, s)
+            cell_path = PATH + '/TMPTMP_wide_cells_ChihwayFast_%s_%s.npy'%(n, s)
             tomobins  = np.load('/project/chihway/dhayaa/DECADE/SOMPZ/Runs/20240408/TomoBinAssign.npy')
                 
             
@@ -372,10 +438,10 @@ for tiles, seed in zip(tiles_list, seed_list):
                 wide_bins = tomobins[cell_id.astype(int)]
             
             
-            Results['e1_%s_%s'%(g_name, s)] = g1[Mask]
-            Results['e2_%s_%s'%(g_name, s)] = g2[Mask]
+            Results['e1_%s_%s'%(g_name, s)] = g1[Mask][Mask_more]
+            Results['e2_%s_%s'%(g_name, s)] = g2[Mask][Mask_more]
                        
-            Results['bin_%s_%s'%(g_name, s)] = wide_bins #Already masked since we only pass in masked fluxes
+            Results['bin_%s_%s'%(g_name, s)] = wide_bins[Mask_more] #Already masked since we only pass in masked fluxes
             
             
             def batch_num_maker(t, i):
@@ -387,7 +453,7 @@ for tiles, seed in zip(tiles_list, seed_list):
                 
                 return index
                 
-            Results['batch_num_%s_%s'%(g_name, s)] = parallel_concatenator(batch_num_maker, N, tiles, tinds).astype(int)[Mask]
+            Results['batch_num_%s_%s'%(g_name, s)] = parallel_concatenator(batch_num_maker, N, tiles, tinds).astype(int)[Mask][Mask_more]
 
 
     Npatch = ngrid**2*len(tilenames)
