@@ -1,6 +1,7 @@
 from astropy.io import fits
 import numpy as np, healpy as hp
 import os, sys, joblib
+from scipy import interpolate
 from tqdm import tqdm
 import yaml, argparse
 import fitsio
@@ -34,9 +35,67 @@ def parallel_concatenator(col_caller, N, *args):
     
     return np.concatenate(final_out, axis = 0)
 
+
+def get_shear_weights(S2N, T_over_Tpsf):
+        
+    weight_path = os.path.dirname(__file__) + '/weights_20240209.npy'
+    X = np.load(weight_path, allow_pickle = True)[()]
+
+    S = X['s2n'].flatten()
+    T = X['T_over_Tpsf'].flatten()
+    R = X['R'].flatten()
+    w = X['w'].flatten()
+
+    #Have checked that this what DESY3 uses.
+    interp        = interpolate.NearestNDInterpolator((S, T), w,)
+    shear_weights = interp( (S2N, T_over_Tpsf) )
+
+    return shear_weights
+
+
+def _get_subset_array(res, i, string, b):
+    '''
+    Convenience function for getting reading out specific arrays
+    and only for specific objects that are part of a jackknife "patch"
+    '''
     
+    if string[:1] == 'w':
+        s = string[2:]
+    else:
+        s = string[3:]
     
-summary = np.mean
+    if b is None:
+        ind = np.where(res['batch_num_%s'%s] != i)[0] #Select only objects in given batch/subset
+    else:
+        ind = np.where( (res['batch_num_%s'%s] != i) & 
+                        (res['bin_%s'%s] == b) 
+                      )[0] #Select only objects in given batch/subset and tomobin
+    
+    return res[string][ind]
+
+
+def _get_cat_path(tile, band, seed, mode = 'plus'):
+    
+    n = 'v11_RunDR3_Reprocess' if tile in BADTILE else 'v08_RunDR3_Restart'
+    
+#     if tile in BADTILE: print("SWITCHING TILE", tile, "TO RERUN VERSION in SRCEXT")
+    
+    args = {'name' : n,
+            'seed' : seed,
+            'mode' : mode,
+            'tile' : tile,
+            'band' : band}
+    
+    path = os.environ['MCAL_DIR'] + r"/%(name)s/SrcExtractor_%(tile)s_g%(mode)s_%(band)s-cat.fits" % args
+    
+    return path
+
+def summary(X, weights = None):
+    
+    return np.average(X, weights = weights)
+
+
+# summary = np.mean
 
 my_parser = argparse.ArgumentParser()
 
@@ -91,37 +150,6 @@ BADTILE = np.loadtxt('/home/dhayaa/Desktop/DECADE/mcal_sim_test/runs/v11_RunDR3_
 
 with open(os.path.dirname(__file__) + '/config_plus.yaml', 'r') as fp:
     config = yaml.load(fp, Loader=yaml.Loader)
-        
-def _get_subset_array(res, i, string, b):
-    '''
-    Convenience function for getting reading out specific arrays
-    and only for specific objects that are part of a jackknife "patch"
-    '''
-    
-    if b is None:
-        ind = np.where(res['batch_num_%s'%string[3:]] != i)[0] #Select only objects in given batch/subset
-    else:
-        ind = np.where( (res['batch_num_%s'%string[3:]] != i) & 
-                        (res['bin_%s'%string[3:]] == b) )[0] #Select only objects in given batch/subset and tomobin
-    
-    return res[string][ind]
-
-
-def _get_cat_path(tile, band, seed, mode = 'plus'):
-    
-    n = 'v11_RunDR3_Reprocess' if tile in BADTILE else 'v08_RunDR3_Restart'
-    
-#     if tile in BADTILE: print("SWITCHING TILE", tile, "TO RERUN VERSION in SRCEXT")
-    
-    args = {'name' : n,
-            'seed' : seed,
-            'mode' : mode,
-            'tile' : tile,
-            'band' : band}
-    
-    path = os.environ['MCAL_DIR'] + r"/%(name)s/SrcExtractor_%(tile)s_g%(mode)s_%(band)s-cat.fits" % args
-    
-    return path
     
 
     
@@ -377,6 +405,8 @@ for tiles, seed in zip(tiles_list, seed_list):
                        
             Results['bin_%s_%s'%(g_name, s)] = wide_bins #Already masked since we only pass in masked fluxes
             
+            Results['w_%s_%s'%(g_name, s)]  = get_shear_weights(SNR[Mask], Tratio[Mask])
+            
             
             def batch_num_maker(t, i):
                 
@@ -412,19 +442,51 @@ for tiles, seed in zip(tiles_list, seed_list):
         
         def _func_(i):
             
-            e1_plus  = summary(_get_subset_array(Results, N[i], 'e1_p_noshear', b))
-            e1_minus = summary(_get_subset_array(Results, N[i], 'e1_m_noshear', b))
-            e2_plus  = summary(_get_subset_array(Results, N[i], 'e2_p_noshear', b))
-            e2_minus = summary(_get_subset_array(Results, N[i], 'e2_m_noshear', b))
+            e1_plus  = summary(_get_subset_array(Results, N[i], 'e1_p_noshear', b),
+                               _get_subset_array(Results, N[i], 'w_p_noshear',  b))
+            
+            e1_minus = summary(_get_subset_array(Results, N[i], 'e1_m_noshear', b),
+                               _get_subset_array(Results, N[i], 'w_m_noshear',  b))
+            
+            e2_plus  = summary(_get_subset_array(Results, N[i], 'e2_p_noshear', b),
+                               _get_subset_array(Results, N[i], 'w_p_noshear',  b))
+            
+            e2_minus = summary(_get_subset_array(Results, N[i], 'e2_m_noshear', b),
+                               _get_subset_array(Results, N[i], 'w_m_noshear',  b))
+            
 
-            R11_plus  = ( summary( _get_subset_array(Results, N[i], 'e1_p_1p', b) ) - 
-                          summary( _get_subset_array(Results, N[i], 'e1_p_1m', b) ) )/0.02
-            R11_minus = ( summary( _get_subset_array(Results, N[i], 'e1_m_1p', b) ) - 
-                          summary( _get_subset_array(Results, N[i], 'e1_m_1m', b) ) )/0.02
-            R22_plus  = ( summary( _get_subset_array(Results, N[i], 'e2_p_2p', b) ) - 
-                          summary( _get_subset_array(Results, N[i], 'e2_p_2m', b) ) )/0.02
-            R22_minus = ( summary( _get_subset_array(Results, N[i], 'e2_m_2p', b) ) - 
-                          summary( _get_subset_array(Results, N[i], 'e2_m_2m', b) ) )/0.02
+            R11_plus  = ( summary( _get_subset_array(Results, N[i], 'e1_p_1p', b),
+                                   _get_subset_array(Results, N[i], 'w_p_1p',  b)) - 
+                          
+                          summary( _get_subset_array(Results, N[i], 'e1_p_1m', b),
+                                   _get_subset_array(Results, N[i], 'w_p_1m',  b)) 
+                        )/0.02
+            
+            
+            R11_minus = ( summary( _get_subset_array(Results, N[i], 'e1_m_1p', b),
+                                   _get_subset_array(Results, N[i], 'w_m_1p',  b)) - 
+                          
+                          summary( _get_subset_array(Results, N[i], 'e1_m_1m', b),
+                                   _get_subset_array(Results, N[i], 'w_m_1m',  b)) 
+                        )/0.02
+            
+            
+            R22_plus  = ( summary( _get_subset_array(Results, N[i], 'e2_p_2p', b),
+                                   _get_subset_array(Results, N[i], 'w_p_2p',  b)) - 
+                          
+                          summary( _get_subset_array(Results, N[i], 'e2_p_2m', b),
+                                   _get_subset_array(Results, N[i], 'w_p_2m',  b)) 
+                        )/0.02
+            
+            
+            R22_minus = ( summary( _get_subset_array(Results, N[i], 'e2_m_2p', b),
+                                   _get_subset_array(Results, N[i], 'w_m_2p',  b)) - 
+                          
+                          summary( _get_subset_array(Results, N[i], 'e2_m_2m', b),
+                                   _get_subset_array(Results, N[i], 'w_m_2m',  b)) 
+                        )/0.02
+            
+            
             
             return i, (e1_plus, e1_minus, e2_plus, e2_minus), (R11_plus, R11_minus, R22_plus, R22_minus)
         
@@ -458,6 +520,8 @@ for tiles, seed in zip(tiles_list, seed_list):
         print('size      N = %d (Masked %0.2f)'%(np.sum(Results['bin_p_noshear'] == b), np.average(Mask)))
         print('recovered m = %1.3f +/- %1.3f [1e-3, 3-sigma]'%(np.mean(m/1e-3), 3*np.std(m/1e-3)*np.sqrt(Npatch)))
         print('recovered c = %1.3f +/- %1.3f [1e-5, 3-sigma]'%(np.mean(c/1e-5), 3*np.std(c/1e-5)*np.sqrt(Npatch)))
+        print('Response  R11 = %1.3f +/- %1.3f [1, 3-sigma]'%(np.mean(R11), 3*np.std(R11)*np.sqrt(Npatch)))
+        print('Response  R22 = %1.3f +/- %1.3f [1, 3-sigma]'%(np.mean(R22), 3*np.std(R22)*np.sqrt(Npatch)))
 
         print('\n---------------------------------\n')
 
@@ -468,6 +532,8 @@ for tiles, seed in zip(tiles_list, seed_list):
             f.write("size      N = %d (Masked %0.2f)\n"%(np.sum(Results['bin_p_noshear'] == b), np.average(Mask)))
             f.write("recovered m = %1.3f +/- %1.3f [1e-3, 3-sigma]\n"%(np.mean(m/1e-3), 3*np.std(m/1e-3)*np.sqrt(Npatch)))
             f.write("recovered c = %1.3f +/- %1.3f [1e-5, 3-sigma]\n"%(np.mean(c/1e-5), 3*np.std(c/1e-5)*np.sqrt(Npatch)))
+            f.write("Response  R11 = %1.3f +/- %1.3f [1, 3-sigma]\n"%(np.mean(R11), 3*np.std(R11)*np.sqrt(Npatch)))
+            f.write("Response  R22 = %1.3f +/- %1.3f [1, 3-sigma]\n"%(np.mean(R22), 3*np.std(R22)*np.sqrt(Npatch)))
 
         R11 = R11_plus
         R22 = R22_plus
