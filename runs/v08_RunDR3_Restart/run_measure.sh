@@ -19,4 +19,4 @@ then
     source /home/dhayaa/Desktop/DECADE/mcal_sim_test/bash_profile.sh
 fi
 
-python -u measure_bias.py --TileCount 1600 --NewClassification
+python -u measure_bias.py --TileCount 1600 #--NewClassification

@@ -9,8 +9,8 @@ import fitsio
 from SimButler import tilenames as tilenames_orig
 
 #Some other packages for doing SOM stuff
-sys.path.append('/home/dhayaa/Desktop/DECADE/CosmicShearPhotoZ/SOMPZ')
-from SOM import Classifier
+sys.path.append('/home/dhayaa/Desktop/DECADE/CosmicShearPhotoZ/')
+from SOMPZ.SOM import Classifier
 
 
 class SuppressPrint:
@@ -38,18 +38,26 @@ def parallel_concatenator(col_caller, N, *args):
 
 def get_shear_weights(S2N, T_over_Tpsf):
         
-    weight_path = os.path.dirname(__file__) + '/weights_20240209.npy'
-    X = np.load(weight_path, allow_pickle = True)[()]
+    path = os.path.dirname(__file__) + '/grid_quantities_20240827.npy'
+    res  = np.load(path)
+    S    = res['SNR']
+    T    = res['T_ratio']
+    R    = (res['R11'] + res['R22'])/2 #Average over both components. No selection response, as in Y3
+    w    = res['weight']
 
-    S = X['s2n'].flatten()
-    T = X['T_over_Tpsf'].flatten()
-    R = X['R'].flatten()
-    w = X['w'].flatten()
-
+    # #The old version, using weights that had R_gamma and R_s of the grid.
+    # weight_path = os.path.dirname(__file__) + '/../weights_20240209.npy'
+    # X = np.load(weight_path, allow_pickle = True)[()]
+    
+    # S = X['s2n'].flatten()
+    # T = X['T_over_Tpsf'].flatten()
+    # R = X['R'].flatten()
+    # w = X['w'].flatten()
+    
     #Have checked that this what DESY3 uses.
-    interp        = interpolate.NearestNDInterpolator((S, T), w,)
+    interp        = interpolate.NearestNDInterpolator((S, T), R * w,)
     shear_weights = interp( (S2N, T_over_Tpsf) )
-
+    
     return shear_weights
 
 
@@ -223,18 +231,7 @@ for tiles, seed in zip(tiles_list, seed_list):
                                                     N, tiles, tinds) <= 3)
                            )
         
-        mask_snr_plus = (parallel_concatenator(lambda t,i: fitsio.read(_get_cat_path(t, 'r', i, mode = 'plus'), columns = 'FLUX_AUTO'), 
-                                              N, tiles, tinds) /
-                         parallel_concatenator(lambda t,i: fitsio.read(_get_cat_path(t, 'r', i, mode = 'plus'), columns = 'FLUXERR_AUTO'), 
-                                              N, tiles, tinds) > 5
-                        )
-        
-        
-        mask_size_plus = (parallel_concatenator(lambda t,i: fitsio.read(_get_cat_path(t, 'r', i, mode = 'plus'), columns = 'FLUX_RADIUS'), 
-                                              N, tiles, tinds) * 0.236 > 0.5
-                         )
                 
-        
         mask_SEflag_minus = ( (parallel_concatenator(lambda t,i: fitsio.read(_get_cat_path(t, 'r', i, mode = 'minus'), columns = 'FLAGS'), 
                                                     N, tiles, tinds) <= 3) & 
                              (parallel_concatenator(lambda t,i: fitsio.read(_get_cat_path(t, 'i', i, mode = 'minus'), columns = 'FLAGS'), 
@@ -242,18 +239,6 @@ for tiles, seed in zip(tiles_list, seed_list):
                              (parallel_concatenator(lambda t,i: fitsio.read(_get_cat_path(t, 'z', i, mode = 'minus'), columns = 'FLAGS'), 
                                                     N, tiles, tinds) <= 3)
                            )
-        
-        mask_snr_minus = (parallel_concatenator(lambda t,i: fitsio.read(_get_cat_path(t, 'r', i, mode = 'minus'), columns = 'FLUX_AUTO'), 
-                                              N, tiles, tinds) /
-                         parallel_concatenator(lambda t,i: fitsio.read(_get_cat_path(t, 'r', i, mode = 'minus'), columns = 'FLUXERR_AUTO'), 
-                                              N, tiles, tinds) > 5
-                        )
-        
-        
-        mask_size_minus = (parallel_concatenator(lambda t,i: fitsio.read(_get_cat_path(t, 'r', i, mode = 'minus'), columns = 'FLUX_RADIUS'), 
-                                              N, tiles, tinds) * 0.236 > 0.5
-                         )
-        
         
         number_plus = (parallel_concatenator(lambda t,i: fitsio.read(_get_cat_path(t, 'r', i, mode = 'plus'), columns = 'NUMBER') + i*int(1e6), 
                                               N, tiles, tinds)
@@ -349,8 +334,7 @@ for tiles, seed in zip(tiles_list, seed_list):
             #######################################
             
             cell_path = PATH + '/wide_cells_%s_%s.npy'%(n, s)
-            tomobins  = np.load('/project/chihway/dhayaa/DECADE/SOMPZ/Runs/20240408/TomoBinAssign.npy')
-                
+            tomobins  = np.load('/project/chihway/dhayaa/DECADE/SOMPZ/Runs/20240831/TomoBinAssign.npy')
             
             if os.path.isfile(cell_path) & (args['NewClassification'] == False):
                 
@@ -376,7 +360,7 @@ for tiles, seed in zip(tiles_list, seed_list):
                 flux     = flux[Mask]
                 flux_err = flux_err[Mask]
 
-                weight_path = '/project/chihway/dhayaa/DECADE/SOMPZ/Runs/20240408/WIDE_SOM_weights.npy'
+                weight_path = '/project/chihway/dhayaa/DECADE/SOMPZ/Runs/20240831/WIDE_SOM_weights.npy'
                 som = Classifier(som_weights = np.load(weight_path)) #Build classifier first, as its faster
                 Nproc = np.max([os.cpu_count(), flux.shape[0]//100_000 + 1])
                 inds  = np.array_split(np.arange(flux.shape[0]), Nproc)
@@ -455,6 +439,14 @@ for tiles, seed in zip(tiles_list, seed_list):
                                _get_subset_array(Results, N[i], 'w_m_noshear',  b))
             
 
+            #This isn't how we calculate response in the catalog, but it is mathematically equivalent.
+            #See https://arxiv.org/pdf/1702.02601 Equation 13. 
+            #We are simply doing the total derivative in the first line rather than using the
+            #product rule and summing the contribution from two derivatives.
+            #I have checked that our estimator below matches the R_gamma + R_s estimator
+            #down to the 4th decimal point (so difference of 1e-4 in shear).
+            #I did this because for 1p, 2m, noshear I only SOM-classified objects selected
+            #under the 1p, 2m selection. So I don't have 1p shear selected under noshear :P
             R11_plus  = ( summary( _get_subset_array(Results, N[i], 'e1_p_1p', b),
                                    _get_subset_array(Results, N[i], 'w_p_1p',  b)) - 
                           
@@ -527,7 +519,8 @@ for tiles, seed in zip(tiles_list, seed_list):
 
         with open(os.path.dirname(__file__) + '/README.md', 'a') as f:
 
-            f.write("TEST RESULTS FOR %s\n" %name)
+            f.write("\n\nTEST RESULTS FOR %s\n" %name)
+            print("\n\n ----------- COMBINED (bin %d)-------" % b)
             f.write("---------------------------------\n")
             f.write("size      N = %d (Masked %0.2f)\n"%(np.sum(Results['bin_p_noshear'] == b), np.average(Mask)))
             f.write("recovered m = %1.3f +/- %1.3f [1e-3, 3-sigma]\n"%(np.mean(m/1e-3), 3*np.std(m/1e-3)*np.sqrt(Npatch)))
