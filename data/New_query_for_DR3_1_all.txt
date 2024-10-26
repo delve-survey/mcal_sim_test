@@ -1,0 +1,1 @@
+select c.tilename c.RA_CENT, c.DEC_CENT from coadd c, proctag t where c.filetype='coadd_det' and (t.tag='DR3_1_2' or t.tag='DR3_1_1') and c.pfw_attempt_id = t.pfw_attempt_id; > /home/dhayaa/Desktop/DECADE/mcal_sim_test/data/Tilelist_DR3_1_All.csv
